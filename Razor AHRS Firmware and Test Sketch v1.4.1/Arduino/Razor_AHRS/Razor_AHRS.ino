@@ -643,10 +643,10 @@ void loop()
       //if (output_stream_on || output_single_on) output_angles();
       if (output_stream_on || output_single_on){
        
-        //output_sensors_text();
+        output_sensors_text();
         //output_sensors_raw(',', '|');
         //output_sensors_raw(',', ',');
-        output_sensor_raw_roll();
+        //output_sensor_raw_roll();
       }
     }
     else  // Output sensor values
