@@ -169,7 +169,7 @@
 // Sensor data output interval in milliseconds
 // This may not work, if faster than 20ms (=50Hz)
 // Code is tuned for 20ms, so better leave it like that
-#define OUTPUT__DATA_INTERVAL 20  // in milliseconds
+#define OUTPUT__DATA_INTERVAL 70 // in milliseconds
 
 // Output mode definitions (do not change)
 #define OUTPUT__MODE_CALIBRATE_SENSORS 0 // Outputs sensor min/max values as text for manual calibration
@@ -183,10 +183,10 @@
 
 // Select your startup output mode and format here!
 int output_mode = OUTPUT__MODE_ANGLES;
-int output_format = OUTPUT__FORMAT_TEXT;
+int output_format = OUTPUT__FORMAT_BINARY;
 
 // Select if serial continuous streaming output is enabled per default on startup.
-#define OUTPUT__STARTUP_STREAM_ON true  // true or false
+#define OUTPUT__STARTUP_STREAM_ON false  // true or false
 
 // If set true, an error message will be output if we fail to read sensor data.
 // Message format: "!ERR: reading <sensor>", followed by "\r\n".
@@ -381,6 +381,7 @@ boolean reset_calibration_session_flag = true;
 int num_accel_errors = 0;
 int num_magn_errors = 0;
 int num_gyro_errors = 0;
+int output_data_interval = OUTPUT__DATA_INTERVAL;
 
 void read_sensors() {
   Read_Gyro(); // Read gyroscope
@@ -597,6 +598,55 @@ void loop()
             Serial.println(num_gyro_errors);
           }
         }
+      } else if (command == 'i') { // Set output _i_nterval
+        while (Serial.available() < 1) {}
+        byte interval = (byte)Serial.read();
+        output_data_interval = interval;
+      } else if (command == 'b') { // Set _b_aud rate
+        while (Serial.available() < 1) {}
+        
+        int rate = (char)Serial.read();
+        int baud = 0;
+        switch (rate) {
+          case '0':
+            baud = 1200;
+            break;
+          case '1':
+            baud = 2400;
+            break;
+          case '2':
+            baud = 4800;
+            break;
+          case '3':
+            baud = 9600;
+            break;
+          case '4':
+            baud = 14400;
+            break;
+          case '5':
+            baud = 19200;
+            break;
+          case '6':
+            baud = 28800;
+            break;
+          case '7':
+            baud = 38400;
+            break;
+          case '8':
+            baud = 57600;
+            break;
+          case '9':
+            baud = 115200;
+            break;
+        }
+        
+        if (baud != 0) {
+          Serial.print("#BAUD");
+          Serial.println(baud);
+          Serial.end();
+          delay(10);
+          Serial.begin(baud);
+        }
       }
 #if OUTPUT__HAS_RN_BLUETOOTH == true
       // Read messages from bluetooth module
@@ -612,7 +662,7 @@ void loop()
   }
 
   // Time to read the sensors again?
-  if((millis() - timestamp) >= OUTPUT__DATA_INTERVAL)
+  if((millis() - timestamp) >= output_data_interval)
   {
     timestamp_old = timestamp;
     timestamp = millis();
@@ -640,13 +690,12 @@ void loop()
       Drift_correction();
       Euler_angles();
       
-      //if (output_stream_on || output_single_on) output_angles();
       if (output_stream_on || output_single_on){
-       
-        output_sensors_text();
-        //output_sensors_raw(',', '|');
-        //output_sensors_raw(',', ',');
-        //output_sensor_raw_roll();
+        if (output_format == OUTPUT__FORMAT_TEXT) {
+          output_sensors_text();
+        } else {
+          output_sensors_binary_packet();
+        }
       }
     }
     else  // Output sensor values

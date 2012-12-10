@@ -105,6 +105,63 @@ void output_sensors_text()
   Serial.print(gyro[2]); Serial.println();
 }
 
+void output_sensors_text_single() // Single line
+{
+  Serial.print("#A");
+  Serial.print(accel[0]); Serial.print(",");
+  Serial.print(accel[1]); Serial.print(",");
+  Serial.print(accel[2]); Serial.print(",");
+
+  Serial.print('M');
+  Serial.print(magnetom[0]); Serial.print(",");
+  Serial.print(magnetom[1]); Serial.print(",");
+  Serial.print(magnetom[2]); Serial.print(",");
+
+  Serial.print('G');
+  Serial.print(gyro[0]); Serial.print(",");
+  Serial.print(gyro[1]); Serial.print(",");
+  Serial.print(gyro[2]); Serial.print('\n');
+}
+
+// Outputs in binary, but in a packet format so packet starts and ends can be located
+// Mid-stream
+void output_sensors_binary_packet() {
+  // Format:
+  // MMMMAAAABBBBCCCCIIIIJJJJKKKKXXXXYYYYZZZZN (41 bytes long)
+  // Where MMMM is the magic number "9DoF" (no null terminator),
+  // AAAA, BBBB, and CCCC are the X, Y and Z values (respectively) of the accelerometer
+  // IIII, JJJJ, and KKKK are the X, Y and Z values (respectively) of the magnetometer
+  // XX, YY, and ZZ are the X, Y and Z values (respectively) of the gyroscope (as signed shorts)
+  // N is a new line character (\n)
+
+// Caution: Dirty casting magic below. The bitshift operator is not defined for floating point numbers,
+// So, I dereference the double pointer that is casted to a long pointer.
+#define write_double(DOUBLE) { long val = *(long *)&DOUBLE; Serial.write(val >> 24); Serial.write(val >> 16); Serial.write(val >> 8); Serial.write(val);}
+#define write_short(SHORT) { short val = SHORT; Serial.write(val >> 8); Serial.write(val); }
+  // Magic number
+  Serial.write('9'); Serial.write('D');
+  Serial.write('o'); Serial.write('F');
+  
+  // Accelerometer
+  write_double(accel[0]);
+  write_double(accel[1]);
+  write_double(accel[2]);
+  
+  // Magnetometer
+  write_double(magnetom[0]);
+  write_double(magnetom[1]);
+  write_double(magnetom[2]);
+  
+  // Gyroscope
+  write_short((short)gyro[0]);
+  write_short((short)gyro[1]);
+  write_short((short)gyro[2]);
+  
+  Serial.write('\n');
+  
+#undef write_double
+}
+
 void output_sensors_raw(char sep1, char sep2)
 {
   Serial.print('#');
