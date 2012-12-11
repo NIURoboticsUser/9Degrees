@@ -1,15 +1,35 @@
 #include <cctype>
 
-#define DOF_BUFFER_SIZE 30 // Packet's data size is 30 bytes
-#define ATOF_SUBSTRING_BUFFER_SIZE 64
-#define DOF_SERIAL_STREAM dofSerial
+// -----------------------------------------------------------------------------------------
+// ---------------------Begin 9 Degrees of Freedom Configuration----------------------------
+// -----------------------------------------------------------------------------------------
+#define DOF_SERIAL_STREAM dofSerial // Serial object name to use for the 9DoF
+#define DOF_SERIAL_HARDWARE_BASE false // Set to true if you are using "Serial" for 9DoF communication
+#define DOF_DATA_INTERVAL 20 // Interval (milliseconds) between data sending, between 1 and 255 (inclusive)
+#define DOF_DATA_CONTINUOUS true // Set to true to enable a continuous data stream on startup, false otherwise
+#define DOF_SERIAL_DEBUG false // Set to true to echo the 9DoF stream to Serial and do no processesing on data
 
-byte dof_data_buffer[DOF_BUFFER_SIZE + 1] = {0};
-byte dof_data_buffer_size = 0;
-byte dof_packet_state = 0;
-boolean dof_data_bad_line = false;
-char atof_substring_buffer[ATOF_SUBSTRING_BUFFER_SIZE + 1] = {0};
-short goodCount = 0;
+// Baud rate for the 9 Degress of freedom. Use values from the table below.
+// Does not have an effect when using USB serial (Serial)
+#define DOF_SERIAL_BAUD 6 
+/*
+DOF_SERIAL_BAUD values:
+  1 -> 2400 baud
+  3 -> 9300 baud (default)
+  4 -> 14400 baud
+  5 -> 19200 baud
+  6 -> 28800 baud (recommended)
+  7 -> 38400 baud
+  8 -> 57600 baud
+  9 -> 115200 baud
+  
+Baud rates above 28800 do not seem to work with sofware serial.
+*/
+
+// -----------------------------------------------------------------------------------------
+// -----------------------End 9 Degrees of Freedom Configuration----------------------------
+// -----------------------------------------------------------------------------------------
+
 
 unsigned long timer;
 
@@ -49,91 +69,93 @@ void setup() {
   pinMode(6, OUTPUT);
   digitalWrite(6, LOW);
   
-  // Setup 9DoF data stream
-  DOF_SERIAL_STREAM.begin(9600);
-  delay(100);
-  DOF_SERIAL_STREAM.print("#b6"); // Configure new baud rate of 38400
-  DOF_SERIAL_STREAM.flush();
-  DOF_SERIAL_STREAM.end();
-  delay(100);
-  DOF_SERIAL_STREAM.begin(28800);
-  delay(10);
-  DOF_SERIAL_STREAM.println("#o1"); // Enable continuous stream
-  DOF_SERIAL_STREAM.print("#i"); // Set interval
-  DOF_SERIAL_STREAM.write(30);
+  setupDof();
 }
 
 void loop() {
-  // Uncomment below line to do a debug read of the 9DOF
- // Serial.println(DOF_SERIAL_STREAM.available());
- // DOF_SERIAL_STREAM.read();return;
-  debugRead();return;
-  //analogWrite(6, map(DOF_SERIAL_STREAM.available(), 0, 64, 0, 128));
-  //analogWrite(6, map(dof_packet_state, 0, 4, 0, 255));
-  /*
-  if (DOF_SERIAL_STREAM.available() > 60) {
-    digitalWrite(6, HIGH);
-  } else {
-    digitalWrite(6, LOW);
-  }*/
-  
-  readDof();
-  
-  
-  /*if (DOF_SERIAL_STREAM.available() > 60) {
-    Serial.print("Available: ");
-    Serial.println(DOF_SERIAL_STREAM.available());
-  }
-  if (DOF_SERIAL_STREAM.available()) {
-    byte in = (byte)DOF_SERIAL_STREAM.read();
-    if (in == '\n') {
-      // There was a new line
-      // Only parse the line if we don't know if it's bad already
-      if (!dof_data_bad_line) {
-        unsigned long timer = millis();
-        boolean goodLine = parseDofLine();
-        timer = millis() - timer;
-        if (timer > 20) {
-          Serial.print("Long Run! ");
-          Serial.println(timer);
-        }
-        if (goodLine) {
-          Serial.println("Good");
-        } else {
-          Serial.println("Bad");
-        }
-      } else {
-        Serial.println("Overflow");
-        clearDofBuffer();
-      }
-    } else {
-      if (dof_data_buffer_size >= DOF_BUFFER_SIZE) {
-        // Overflow of buffer
-        dof_data_bad_line = true;
-      } else {
-        if (in > 126) {
-          Serial.println("Extended");
-        } else if (in < 32) {
-          Serial.println("Control");
-        } else if (in == 0) {
-          Serial.println("Null");
-        }
-        dof_data_buffer[dof_data_buffer_size] = in;
-        dof_data_buffer[++dof_data_buffer_size] = 0;
-      }
-    }
-  }*/
+  loopDof();
 }
 
+void debugRead(const Stream &in, const Stream &out) {
+  if (DOF_SERIAL_STREAM.available()) {
+    byte in = (byte)DOF_SERIAL_STREAM.read();
+    Serial.write(in);
+  }
+  return;
+}
 
-void readDof() {
+// -----------------------------------------------------------------------------------------
+// -----------------------Begin 9 Degrees of Freedom Code-----------------------------------
+// -----------------------------------------------------------------------------------------
+
+#define DOF_BUFFER_SIZE 30 // Packet's data size is 30 bytes
+
+byte dof_data_buffer[DOF_BUFFER_SIZE + 1] = {0};
+byte dof_data_buffer_size = 0;
+byte dof_packet_state = 0;
+boolean dof_data_bad_line = false;
+short dof_good_count = 0;
+short dof_bad_count = 0;
+
+void setupDof() {
+
+#if DOF_SERIAL_HARDWARE_BASE != true
+  #if DOF_SERIAL_BAUD == 1
+    #define DOF_SERIAL_BAUD_RATE 2400
+  #elif DOF_SERIAL_BAUD == 2
+    #define DOF_SERIAL_BAUD_RATE 4800
+  #elif DOF_SERIAL_BAUD == 3
+    #define DOF_SERIAL_BAUD_RATE 9600
+  #elif DOF_SERIAL_BAUD == 4
+    #define DOF_SERIAL_BAUD_RATE 14400
+  #elif DOF_SERIAL_BAUD == 5
+    #define DOF_SERIAL_BAUD_RATE 19200
+  #elif DOF_SERIAL_BAUD == 6
+    #define DOF_SERIAL_BAUD_RATE 28800
+  #elif DOF_SERIAL_BAUD == 7
+    #define DOF_SERIAL_BAUD_RATE 38400
+  #elif DOF_SERIAL_BAUD == 8
+    #define DOF_SERIAL_BAUD_RATE 57600
+  #elif DOF_SERIAL_BAUD == 9
+    #define DOF_SERIAL_BAUD_RATE 115200
+  #else
+    #define DOF_SERIAL_BAUD_RATE 9600
+    #undef DOF_SERIAL_BAUD
+    #define DOF_SERIAL_BAUD 3
+  #endif
+  
+  DOF_SERIAL_STREAM.begin(9600);
+  
+  #if DOF_SERIAL_BAUD != 3 // Only configure baud if not default
+    delay(100);
+    DOF_SERIAL_STREAM.print("#b"); // Configure new baud rate of 38400
+    DOF_SERIAL_STREAM.print(DOF_SERIAL_BAUD);
+    DOF_SERIAL_STREAM.flush();
+    DOF_SERIAL_STREAM.end();
+    delay(100);
+    DOF_SERIAL_STREAM.begin(DOF_SERIAL_BAUD_RATE);
+    delay(10);
+  #endif
+  
+#else
+  #define DOF_SERIAL_BAUD_RATE 9600
+#endif
+
+  dofContinuousStream(DOF_DATA_CONTINUOUS);
+  dofSetInterval(DOF_DATA_INTERVAL);
+}
+
+void loopDof() {
+#if DOF_SERIAL_DEBUG == true
+  debugRead();
+  return;
+#endif
   if (DOF_SERIAL_STREAM.available()) {
     byte in = (byte)DOF_SERIAL_STREAM.read();
     switch (dof_packet_state) {
       case 0:
         if (in == '9') {
           dof_packet_state = 1;
-          timeStart();
         }
         break;
       case 1:
@@ -150,36 +172,27 @@ void readDof() {
           
         break;
       case 3:
-        delay(50);
         if (in == 'F')
           dof_packet_state = 4;
         else
           dof_packet_state = 0;
-          
         break;
       default:
         if (dof_data_buffer_size >= DOF_BUFFER_SIZE) {
           if (in == '\n') {
-            
             // Good line
             readDofPacket();
-            Serial.print("T");
-            Serial.println(timeEnd());
-            //Serial.println("Good");
-            //Serial.println(DOF_SERIAL_STREAM.available());
-            //Serial.print("Avg ");
-            //Serial.println(dofDataTime / goodCount);
-            //delay(5);
-            //timeStart();
+            Serial.print("Avg "); // The average time between new data
+            Serial.println(dofDataTime / dof_good_count);
+            Serial.print((double)dof_bad_count / dof_good_count);
+            Serial.print(" (");
+            Serial.print(dof_bad_count);
+            Serial.println(")");
             printDofData();
-            //Serial.println(timeEnd());
           } else {
+            // Bad line
             Serial.println("Bad");
-            //Serial.print("Line error (overflow)! Char: ");
-            //Serial.write(in);
-           // Serial.print(" Available: ");
-            //Serial.print(DOF_SERIAL_STREAM.available());
-            //Serial.println();
+            dof_bad_count++;
           }
           clearDofBuffer();
         } else {
@@ -188,61 +201,6 @@ void readDof() {
         }
         break;
     }
-    /*if (in == '\n') {
-      if (!dof_data_bad_line) {
-        unsigned long timer = millis();
-        boolean goodLine = readDofPacket();
-        timer = millis() - timer;
-        if (timer > 20) {
-          Serial.print("Long Run! ");
-          Serial.println(timer);
-        }
-        if (goodLine) {
-          Serial.println("Good");
-        } else {
-          Serial.println("Bad");
-        }
-      } else {
-        Serial.println("Overflow");
-        clearDofBuffer();
-      }
-    } else {
-      if (dof_data_buffer_size >= DOF_BUFFER_SIZE) {
-        // Overflow of buffer
-        dof_data_bad_line = true;
-      } else {
-        switch (dof_packet_state) {
-          case 0:
-            if (in == '9')
-              dof_packet_state = 1;
-            break;
-          case 1:
-            if (in == 'D')
-              dof_packet_state = 2;
-            else
-              dof_packet_state = 0;
-            break;
-          case 2:
-            if (in == 'o')
-              dof_packet_state = 3;
-            else
-              dof_packet_state = 0;
-              
-            break;
-          case 3:
-            if (in == 'F')
-              dof_packet_state = 4;
-            else
-              dof_packet_state = 0;
-              
-            break;
-          default:
-            dof_data_buffer[dof_data_buffer_size] = in;
-            dof_data_buffer[++dof_data_buffer_size] = 0;
-            break;
-        }
-      }
-    }*/
   }
 }
 
@@ -269,13 +227,13 @@ void readDofPacket() {
   
   read_short(24, data.gyroX);
   read_short(26, data.gyroY);
-  read_short(38, data.gyroZ);
+  read_short(28, data.gyroZ);
   
   dofData = data;
-  //Serial.print("Time: ");
-  //Serial.println(millis() - dofDataTime);
   
-  goodCount++;
+  // Statistics collecting to check both average age of data,
+  // And for seeing how old current data is
+  dof_good_count++;
   dofDataTime = millis();
   
 }
@@ -291,116 +249,12 @@ void read_double(byte startIndex, double &out) {
 }
 
 void read_short(byte startIndex, short &out) {
-  //short val = 0;
   out = 0;
   out |= dof_data_buffer[startIndex]; out <<= 8;
   out |= dof_data_buffer[startIndex + 1];
 }
 
-void debugRead() {
-  if (DOF_SERIAL_STREAM.available()) {
-    byte in = (byte)DOF_SERIAL_STREAM.read();
-    Serial.write(in);
-  }
-  return;
-}
 
-// Parses the line stored in dof_data_buffer
-// If parsing was successful, stores data into 
-// Returns true if the parsing was successful, false otherwise
-boolean parseDofLine() {
-  // Example line:
-  //#A-14,7.17,248.83,M4.67,18.17,13100,G26.00,123.00,-7.00.\n
-  return false;
-  // Macro time!
-/*  
-  // bad_line() clears the line buffer and returns out of parseDofLine
-#define bad_line() clearDofBuffer();return false;
-  
-  // checks to see if the passed character is the next character in the line
-  // if so, allows funtion to continue. If not, calls bad_line()
-#define check_char(CHAR) if (dof_data_buffer[byteCursor++] != CHAR) { bad_line(); }
-  
-  // Reads the next section (set of characters to the comma delimiter)
-  // and puts the value into the passed variable,
-  // exiting the function if the section is invalid
-#define read_section(TARGET) if (!parseSection(byteCursor, length, TARGET)) { bad_line(); };
-
-  byte length = dof_data_buffer_size;
-  Serial.print("Buffer data: ");
-  //Serial.print(dof_data_buffer);
-  Serial.println();
-  
-  // Check line length
-  // Minimum possible line length is 13
-  if (length <= 13) {
-    Serial.println("byteCursorLength bad");
-    bad_line();
-  }
-  
-  // Verify beginning byte
-  if (dof_data_buffer[0] != '#') {
-    bad_line();
-  }
-  
-  byte byteCursor = 1;
-  
-  DofData data;
-  
-  // Accelerometer
-  
-  check_char('A');
-  read_section(data.accelX);
-  check_char(',');
-  read_section(data.accelY);
-  check_char(',');
-  read_section(data.accelZ);
-  
-  // Magnometer
-  
-  check_char(',');
-  check_char('M');
-  read_section(data.magX);
-  check_char(',');
-  read_section(data.magY);
-  check_char(',');
-  read_section(data.magZ);
-  
-  // Gyroscope
-  
-  check_char(',');
-  check_char('G');
-  read_section(data.gyroX);
-  check_char(',');
-  read_section(data.gyroY);
-  check_char(',');
-  read_section(data.gyroZ);
-  
-  // If we get this far, the line has been well formed, up to this point.
-  // Now to check to see if there is more we haven't seen yet.
-  
-  // The byteCursor *should* be greater than the length of the line
-  if (byteCursor >= length) {
-    // Everything is looking good
-    dofData = data;
-    dofDataTime = millis();
-    //storeDofData(data);
-    clearDofBuffer();
-    return true;
-  }
-  Serial.println("byteCursorLength bad");
-  Serial.print("Byte cursor: ");
-  Serial.print(byteCursor);
-  Serial.print(" Length: ");
-  Serial.println(length);
-  
-  bad_line();
-
-#undef bad_line
-#undef check_char
-#undef read_section
-*/
-}
 
 void clearDofBuffer() {
   dof_data_buffer[0] = 0;
@@ -432,62 +286,23 @@ void printDofData() {
   Serial.println(" } }");
 }
 
-double atof_substring(byte str[], byte start_index, byte end_index) {
-  byte j = 0;
-  for (byte i = start_index; i <= end_index; i++) {
-    atof_substring_buffer[j++] = str[i];
+void dofContinuousStream(boolean enable) {
+  if (enable) {
+    DOF_SERIAL_STREAM.println("#o1");
+  } else {
+    DOF_SERIAL_STREAM.println("#o0");
   }
-  atof_substring_buffer[j] = 0;
-  return atof(atof_substring_buffer);
 }
 
-boolean parseSection(byte &byteCursor, byte length, double &value) {
-  // endByte is inclusive; that is, the substring's last index is endByte,
-  // including endByte
-  byte endByte = byteCursor;
-  /* Hit mask values (flags)
-    0x10 - '-'
-    0x20 - '.'
-    0x40 - ','
-  */
-  byte hitMask = 0;
-  for (short i = byteCursor; i < length; i++) {
-    byte b = dof_data_buffer[i];
-    switch (b) {
-      case '-':
-        if (hitMask & 0x10) {
-          // Uh, oh. we found a '-' more than we should have...
-          return false;
-        } else {
-          hitMask |= 0x10;
-        }
-        break;
-      case '.':
-        if (hitMask & 0x20) {
-          // Uh, oh. we found a '.' more than we should have...
-          return false;
-        } else {
-          hitMask |= 0x20;
-        }
-        break;
-      case ',':
-        // Got to the end of the section
-        endByte = i - 1;
-        value = atof_substring(dof_data_buffer, byteCursor, endByte);
-        byteCursor = endByte + 1;
-        return true;
-      default:
-        if (!isdigit(b)) {
-          // Not expecting anything else except a digit
-          return false;
-        }
-        endByte = i;
-        break;
-    }
-  }
-  
-  // We reached the end of the string, so the section is done.
-  value = atof_substring(dof_data_buffer, byteCursor, endByte);
-  byteCursor = endByte + 1;
-  return true;
+void dofRequestData() {
+  DOF_SERIAL_STREAM.println("#f"); // Request _f_rame
 }
+
+void dofSetInterval(byte interval) {
+  DOF_SERIAL_STREAM.print("#i"); // Set _i_nterval
+  DOF_SERIAL_STREAM.write(interval);
+}
+
+// -----------------------------------------------------------------------------------------
+// -------------------------End 9 Degrees of Freedom Code-----------------------------------
+// -----------------------------------------------------------------------------------------
