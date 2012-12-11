@@ -599,8 +599,10 @@ void loop()
           }
         }
       } else if (command == 'i') { // Set output _i_nterval
-        while (Serial.available() < 1) {}
-        byte interval = (byte)Serial.read();
+        while (Serial.available() < 2) {}
+        short interval = Serial.read();
+        interval <<= 8;
+        interval |= Serial.read();
         output_data_interval = interval;
       } else if (command == 'b') { // Set _b_aud rate
         while (Serial.available() < 1) {}
