@@ -608,9 +608,6 @@ void loop()
         int rate = (char)Serial.read();
         int baud = 0;
         switch (rate) {
-          case '0':
-            baud = 1200;
-            break;
           case '1':
             baud = 2400;
             break;

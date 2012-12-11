@@ -1,23 +1,60 @@
 /* This file is part of the Razor AHRS Firmware */
 
-// Output angles: yaw, pitch, roll
-void output_angles()
+// Outputs in binary, but in a packet format so packet starts and ends can be located
+// Mid-stream
+void output_sensors_binary_packet() {
+  // Format:
+  // MMMMAAAABBBBCCCCIIIIJJJJKKKKXXXXYYYYZZZZN (41 bytes long)
+  // Where MMMM is the magic number "9DoF" (no null terminator),
+  // AAAA, BBBB, and CCCC are the X, Y and Z values (respectively) of the accelerometer
+  // IIII, JJJJ, and KKKK are the X, Y and Z values (respectively) of the magnetometer
+  // XX, YY, and ZZ are the X, Y and Z values (respectively) of the gyroscope (as signed shorts)
+  // N is a new line character (\n)
+
+// Caution: Dirty casting magic below. The bitshift operator is not defined for floating point numbers,
+// So, I dereference the double pointer that is casted to a long pointer.
+#define write_double(DOUBLE) { long val = *(long *)&DOUBLE; Serial.write(val >> 24); Serial.write(val >> 16); Serial.write(val >> 8); Serial.write(val);}
+#define write_short(SHORT) { short val = SHORT; Serial.write(val >> 8); Serial.write(val); }
+  // Magic number
+  Serial.write('9'); Serial.write('D');
+  Serial.write('o'); Serial.write('F');
+  
+  // Accelerometer
+  write_double(accel[0]);
+  write_double(accel[1]);
+  write_double(accel[2]);
+  
+  // Magnetometer
+  write_double(magnetom[0]);
+  write_double(magnetom[1]);
+  write_double(magnetom[2]);
+  
+  // Gyroscope
+  write_short((short)gyro[0]);
+  write_short((short)gyro[1]);
+  write_short((short)gyro[2]);
+  
+  Serial.write('\n');
+  
+#undef write_double
+}
+
+void output_sensors_text()
 {
-  if (output_format == OUTPUT__FORMAT_BINARY)
-  {
-    float ypr[3];  
-    ypr[0] = TO_DEG(yaw);
-    ypr[1] = TO_DEG(pitch);
-    ypr[2] = TO_DEG(roll);
-    Serial.write((byte*) ypr, 12);  // No new-line
-  }
-  else if (output_format == OUTPUT__FORMAT_TEXT)
-  {
-    Serial.print("#YPR=");
-    Serial.print(TO_DEG(yaw)); Serial.print(",");
-    Serial.print(TO_DEG(pitch)); Serial.print(",");
-    Serial.print(TO_DEG(roll)); Serial.println();
-  }
+  Serial.print("#A-"); Serial.print('=');
+  Serial.print(accel[0]); Serial.print(",");
+  Serial.print(accel[1]); Serial.print(",");
+  Serial.print(accel[2]); Serial.println();
+
+  Serial.print("#M-"); Serial.print('=');
+  Serial.print(magnetom[0]); Serial.print(",");
+  Serial.print(magnetom[1]); Serial.print(",");
+  Serial.print(magnetom[2]); Serial.println();
+
+  Serial.print("#G-"); Serial.print('=');
+  Serial.print(gyro[0]); Serial.print(",");
+  Serial.print(gyro[1]); Serial.print(",");
+  Serial.print(gyro[2]); Serial.println();
 }
 
 void output_calibration(int calibration_sensor)
@@ -69,136 +106,6 @@ void output_calibration(int calibration_sensor)
   }
 }
 
-void output_sensors_text(char raw_or_calibrated)
-{
-  Serial.print("#A-"); Serial.print(raw_or_calibrated); Serial.print('=');
-  Serial.print(accel[0]); Serial.print(",");
-  Serial.print(accel[1]); Serial.print(",");
-  Serial.print(accel[2]); Serial.println();
-
-  Serial.print("#M-"); Serial.print(raw_or_calibrated); Serial.print('=');
-  Serial.print(magnetom[0]); Serial.print(",");
-  Serial.print(magnetom[1]); Serial.print(",");
-  Serial.print(magnetom[2]); Serial.println();
-
-  Serial.print("#G-"); Serial.print(raw_or_calibrated); Serial.print('=');
-  Serial.print(gyro[0]); Serial.print(",");
-  Serial.print(gyro[1]); Serial.print(",");
-  Serial.print(gyro[2]); Serial.println();
-}
-
-void output_sensors_text()
-{
-  Serial.print("#A-"); Serial.print('=');
-  Serial.print(accel[0]); Serial.print(",");
-  Serial.print(accel[1]); Serial.print(",");
-  Serial.print(accel[2]); Serial.println();
-
-  Serial.print("#M-"); Serial.print('=');
-  Serial.print(magnetom[0]); Serial.print(",");
-  Serial.print(magnetom[1]); Serial.print(",");
-  Serial.print(magnetom[2]); Serial.println();
-
-  Serial.print("#G-"); Serial.print('=');
-  Serial.print(gyro[0]); Serial.print(",");
-  Serial.print(gyro[1]); Serial.print(",");
-  Serial.print(gyro[2]); Serial.println();
-}
-
-void output_sensors_text_single() // Single line
-{
-  Serial.print("#A");
-  Serial.print(accel[0]); Serial.print(",");
-  Serial.print(accel[1]); Serial.print(",");
-  Serial.print(accel[2]); Serial.print(",");
-
-  Serial.print('M');
-  Serial.print(magnetom[0]); Serial.print(",");
-  Serial.print(magnetom[1]); Serial.print(",");
-  Serial.print(magnetom[2]); Serial.print(",");
-
-  Serial.print('G');
-  Serial.print(gyro[0]); Serial.print(",");
-  Serial.print(gyro[1]); Serial.print(",");
-  Serial.print(gyro[2]); Serial.print('\n');
-}
-
-// Outputs in binary, but in a packet format so packet starts and ends can be located
-// Mid-stream
-void output_sensors_binary_packet() {
-  // Format:
-  // MMMMAAAABBBBCCCCIIIIJJJJKKKKXXXXYYYYZZZZN (41 bytes long)
-  // Where MMMM is the magic number "9DoF" (no null terminator),
-  // AAAA, BBBB, and CCCC are the X, Y and Z values (respectively) of the accelerometer
-  // IIII, JJJJ, and KKKK are the X, Y and Z values (respectively) of the magnetometer
-  // XX, YY, and ZZ are the X, Y and Z values (respectively) of the gyroscope (as signed shorts)
-  // N is a new line character (\n)
-
-// Caution: Dirty casting magic below. The bitshift operator is not defined for floating point numbers,
-// So, I dereference the double pointer that is casted to a long pointer.
-#define write_double(DOUBLE) { long val = *(long *)&DOUBLE; Serial.write(val >> 24); Serial.write(val >> 16); Serial.write(val >> 8); Serial.write(val);}
-#define write_short(SHORT) { short val = SHORT; Serial.write(val >> 8); Serial.write(val); }
-  // Magic number
-  Serial.write('9'); Serial.write('D');
-  Serial.write('o'); Serial.write('F');
-  
-  // Accelerometer
-  write_double(accel[0]);
-  write_double(accel[1]);
-  write_double(accel[2]);
-  
-  // Magnetometer
-  write_double(magnetom[0]);
-  write_double(magnetom[1]);
-  write_double(magnetom[2]);
-  
-  // Gyroscope
-  write_short((short)gyro[0]);
-  write_short((short)gyro[1]);
-  write_short((short)gyro[2]);
-  
-  Serial.write('\n');
-  
-#undef write_double
-}
-
-void output_sensors_raw(char sep1, char sep2)
-{
-  Serial.print('#');
-  //Print Acceleration Data
-  Serial.print(accel[0]); Serial.print(sep1);
-  Serial.print(accel[1]); Serial.print(sep1);
-  Serial.print(accel[2]); Serial.print(sep2);
-
-  //Print Magnometer Data
-  Serial.print(magnetom[0]); Serial.print(sep1);
-  Serial.print(magnetom[1]); Serial.print(sep1);
-  Serial.print(magnetom[2]); Serial.print(sep2);
-
-  //Print Gyroscope Data
-  Serial.print(gyro[0]); Serial.print(sep1);
-  Serial.print(gyro[1]); Serial.print(sep1);
-  Serial.print(gyro[2]);
-  
-  Serial.println();
-}
-
-void output_sensor_raw_roll()
-{
-  //Print Gyroscope Data
-  Serial.print(TO_DEG(roll));
-  Serial.print(',');
-  
-  //Serial.println();
-}
-
-void output_sensors_binary()
-{
-  Serial.write((byte*) accel, 12);
-  Serial.write((byte*) magnetom, 12);
-  Serial.write((byte*) gyro, 12);
-}
-
 void output_sensors()
 {
   if (output_mode == OUTPUT__MODE_SENSORS_RAW)
@@ -233,5 +140,30 @@ void output_sensors()
       output_sensors_text('C');
     }
   }
+}
+
+void output_sensors_text(char raw_or_calibrated)
+{
+  Serial.print("#A-"); Serial.print(raw_or_calibrated); Serial.print('=');
+  Serial.print(accel[0]); Serial.print(",");
+  Serial.print(accel[1]); Serial.print(",");
+  Serial.print(accel[2]); Serial.println();
+
+  Serial.print("#M-"); Serial.print(raw_or_calibrated); Serial.print('=');
+  Serial.print(magnetom[0]); Serial.print(",");
+  Serial.print(magnetom[1]); Serial.print(",");
+  Serial.print(magnetom[2]); Serial.println();
+
+  Serial.print("#G-"); Serial.print(raw_or_calibrated); Serial.print('=');
+  Serial.print(gyro[0]); Serial.print(",");
+  Serial.print(gyro[1]); Serial.print(",");
+  Serial.print(gyro[2]); Serial.println();
+}
+
+void output_sensors_binary()
+{
+  Serial.write((byte*) accel, 12);
+  Serial.write((byte*) magnetom, 12);
+  Serial.write((byte*) gyro, 12);
 }
 
