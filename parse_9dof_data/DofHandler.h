@@ -107,6 +107,8 @@ template <class StreamType> class DofHandler {
     void requestData();
     DofData getData() { return data; }
     EulerData getEulerData() { return eulerData; }
+    GyroData getGyroData() { return gyroData; }
+    boolean isNewDataAvailable() { if (newData) { newData = false; return true;} else return false; }
     
     /*
      Gets the age (in milliseconds) of the last good data frame.
@@ -147,7 +149,9 @@ template <class StreamType> class DofHandler {
     
     DofData data; // Holds the data retrieved from the 9DoF
     EulerData eulerData;
+    GyroData gyroData;
     unsigned long dataTime; // Stores the time that the data was read (millis())
+    boolean newData;
     
     
     // Statistics
@@ -296,6 +300,7 @@ boolean DofHandler<StreamType>::_checkStream() {
           lastPacketGood = false;
         }
         packet = true;
+        newData = true;
         clearBuffer();
       } else {
         dataBuffer[dataBufferSize] = in;
@@ -334,12 +339,22 @@ void DofHandler<StreamType>::readPacket() {
     read_short(24, data.gyroX);
     read_short(26, data.gyroY);
     read_short(28, data.gyroZ);
+    
+    gyroData.x = data.gyroX;
+    gyroData.y = data.gyroY;
+    gyroData.z = data.gyroZ;
+    gyroData.checkSum = (gyroData.x + gyroData.y + gyroData.z) % 10;
     //this->data = data;
     lastPacketMode = DOF_DATA_MODE_ALL;
   } else if (dataMode == DOF_DATA_MODE_GYRO) {
     read_short(0, data.gyroX);
     read_short(2, data.gyroY);
     read_short(4, data.gyroZ);
+    
+    gyroData.x = data.gyroX;
+    gyroData.y = data.gyroY;
+    gyroData.z = data.gyroZ;
+    gyroData.checkSum = (gyroData.x + gyroData.y + gyroData.z) % 10;
     //this->data = data;
     lastPacketMode = DOF_DATA_MODE_GYRO;
   } else if (dataMode == DOF_DATA_MODE_EULER) {

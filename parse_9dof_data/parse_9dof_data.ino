@@ -86,13 +86,13 @@ void loop() {
           int yaw;
           int pitch;
           int roll;
-          char checkSum;0
+          char checkSum;
         } gdata;
         EulerData data = dofHandler.getEulerData();
         gdata.yaw = data.yaw;
         gdata.pitch = data.pitch;
         gdata.roll = data.roll;
-        gdata.checkSum = (gdata.x + gdata.y + gdata.z) % 10;
+        gdata.checkSum = (gdata.yaw + gdata.pitch + gdata.roll) % 10;
         
         serialStructPrint(Serial, &gdata, sizeof(gdata));
       }
