@@ -18,7 +18,7 @@ void setup() {
   dofHandler.begin(9600, 28800);
   dofHandler.setContinuousStream(DOF_DATA_CONTINUOUS);
   dofHandler.setUpdateInterval(DOF_DATA_INTERVAL);
-  dofHandler.setDataMode(DOF_DATA_MODE_EULER);
+  dofHandler.setDataMode(DOF_DATA_MODE_GYRO);
 
 }
 
@@ -68,7 +68,13 @@ void loop() {
       dofHandler.requestData();
       while (!dofHandler.checkStream()) {}
       if (dofHandler.isPacketGood()) {
-        // TODO: Send gyro data
+        GyroData gdata;
+        DofData data = dofHandler.getData();
+        gdata.x = data.gyroX * 100;
+        gdata.y = data.gyroY * 100;
+        gdata.z = data.gyroZ * 100;
+        gdata.checkSum = (gdata.x + gdata.y + gdata.z) % 10;
+        serialStructPrint(Serial, &gdata, sizeof(gdata));
       }
     } else if (c == 'E') {
       dofHandler.setDataMode(DOF_DATA_MODE_EULER);
@@ -80,12 +86,13 @@ void loop() {
           int yaw;
           int pitch;
           int roll;
-          char checkSum;
+          char checkSum;0
         } gdata;
         EulerData data = dofHandler.getEulerData();
         gdata.yaw = data.yaw;
         gdata.pitch = data.pitch;
         gdata.roll = data.roll;
+        gdata.checkSum = (gdata.x + gdata.y + gdata.z) % 10;
         
         serialStructPrint(Serial, &gdata, sizeof(gdata));
       }

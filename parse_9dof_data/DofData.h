@@ -20,7 +20,8 @@ struct EulerData {
 };
 
 struct GyroData {
-  double x, y, z;
+  int x, y, z;
+  char checkSum;
 };
 
 #endif
