@@ -8,9 +8,19 @@ struct DofData {
   double magX;
   double magY;
   double magZ;
-  short gyroX;
-  short gyroY;
-  short gyroZ;
+  double gyroX;
+  double gyroY;
+  double gyroZ;
+};
+
+struct EulerData {
+  double roll;
+  double pitch;
+  double yaw;
+};
+
+struct GyroData {
+  double x, y, z;
 };
 
 #endif

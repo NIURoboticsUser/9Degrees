@@ -5,7 +5,14 @@
 
 #define DOF_DATA_DEFAULT_INTERVAL 70 // Default data interval
 #define DOF_DATA_DEFAULT_CONTINUOUS false
-#define DOF_DATA_SIZE 30 // Packet's data size is 30
+#define DOF_DATA_SIZE 30 // Packet's max data size is 30
+
+#define DOF_DATA_MODE_ALL 0 // Send all sensor data (binary)
+#define DOF_DATA_MODE_GYRO 1 // Send Gyro data
+#define DOF_DATA_MODE_EULER 2 // Send "Euler" angles
+#define DOF_DATA_MODE_DEFAULT DOF_DATA_MODE_ALL
+
+const byte DOF_DATA_MODE_SIZE[] = {30, 6, 12};
 
 /*
  DofHandler is designed to handle communications between a 9Degrees of Freedom board
@@ -88,6 +95,10 @@ template <class StreamType> class DofHandler {
     void enableContinuousStream() { setContinuousStream(true); }
     void disableContinuousStream() { setContinuousStream(false); }
     
+    void setDataMode(byte mode, boolean force = false);
+    
+    void zeroCalibrate();
+    
     /*
      Requests a single data frame from the 9DoF.
      If the time since the last frame and this request is less than the update interval,
@@ -95,6 +106,7 @@ template <class StreamType> class DofHandler {
      */
     void requestData();
     DofData getData() { return data; }
+    EulerData getEulerData() { return eulerData; }
     
     /*
      Gets the age (in milliseconds) of the last good data frame.
@@ -122,22 +134,29 @@ template <class StreamType> class DofHandler {
     void readPacket(); // Reads the packet data stored in the buffer
     void clearBuffer(); // Clears packet data buffer and resets state
     void read_double(byte startIndex, double &out); // Read a double from a set of bytes
-    void read_short(byte startIndex, short &out); // Read a short from a set of bytes
+    void read_short(byte startIndex, double &out); // Read a short from a set of bytes
     byte packetState; // The packet's state (Finite state machine)
     byte dataBuffer[DOF_DATA_SIZE]; // Buffer for packet data
     byte dataBufferSize; // Amount of data stored in the buffer
+    byte dataModeSize; // Size of the current mode's packet data
+    byte dataMode;
+    byte lastPacketMode;
     
     short updateInterval; // Number of milliseconds between updates sent by 9DoF
     boolean continuousStream; // True if the 9DoF is configured to send a continous stream, false otherwise
     
     DofData data; // Holds the data retrieved from the 9DoF
+    EulerData eulerData;
     unsigned long dataTime; // Stores the time that the data was read (millis())
+    
     
     // Statistics
     short goodCount; // Number of good data frames retreived.
     short badCount; // Number of bad data frames retreived.
     // True if the last incoming packet was good (goodCount was incremented); false otherwise
     boolean lastPacketGood;
+    
+    
   
 };
 
@@ -160,6 +179,8 @@ DofHandler<StreamType>::DofHandler(StreamType *dofStream, int baud) {
   updateInterval = -1;
   continuousStream = false;
   lastPacketGood = false;
+  dataModeSize = DOF_DATA_MODE_SIZE[DOF_DATA_MODE_DEFAULT];
+  dataMode = DOF_DATA_MODE_DEFAULT;
 }
 
 template <class StreamType>
@@ -251,7 +272,7 @@ boolean DofHandler<StreamType>::_checkStream() {
         packetState = 0;
       break;
     default:
-      if (dataBufferSize >= DOF_DATA_SIZE) {
+      if (dataBufferSize >= dataModeSize) {
         // The next byte should be an end line character
         if (in == '\n') {
           // Good 
@@ -298,21 +319,37 @@ void DofHandler<StreamType>::readPacket() {
   // MMMM and N are stripped as data is coming in.
   
   // Packet size is already 36 bytes long
-  DofData data;
+  //DofData data;
+  //EulerData euler;
   
-  read_double(0, data.accelX);
-  read_double(4, data.accelY);
-  read_double(8, data.accelZ);
-  
-  read_double(12, data.magX);
-  read_double(16, data.magY);
-  read_double(20, data.magZ);
-  
-  read_short(24, data.gyroX);
-  read_short(26, data.gyroY);
-  read_short(28, data.gyroZ);
-  
-  this->data = data;
+  if (dataMode == DOF_DATA_MODE_ALL) {
+    read_double(0, data.accelX);
+    read_double(4, data.accelY);
+    read_double(8, data.accelZ);
+    
+    read_double(12, data.magX);
+    read_double(16, data.magY);
+    read_double(20, data.magZ);
+    
+    read_short(24, data.gyroX);
+    read_short(26, data.gyroY);
+    read_short(28, data.gyroZ);
+    //this->data = data;
+    lastPacketMode = DOF_DATA_MODE_ALL;
+  } else if (dataMode == DOF_DATA_MODE_GYRO) {
+    read_short(0, data.gyroX);
+    read_short(2, data.gyroY);
+    read_short(4, data.gyroZ);
+    //this->data = data;
+    lastPacketMode = DOF_DATA_MODE_GYRO;
+  } else if (dataMode == DOF_DATA_MODE_EULER) {
+    read_double(0, eulerData.roll);
+    read_double(4, eulerData.pitch);
+    read_double(8, eulerData.yaw);
+    //this->eulerData = euler;
+    lastPacketMode = DOF_DATA_MODE_EULER;
+  }
+  //this->data = data;
 }
 
 template <class StreamType>
@@ -327,10 +364,11 @@ void DofHandler<StreamType>::read_double(byte startIndex, double &out) {
 }
 
 template <class StreamType>
-void DofHandler<StreamType>::read_short(byte startIndex, short &out) {
-  out = 0;
-  out |= dataBuffer[startIndex]; out <<= 8;
-  out |= dataBuffer[startIndex + 1];
+void DofHandler<StreamType>::read_short(byte startIndex, double &out) {
+  short val = 0;
+  val |= dataBuffer[startIndex]; val <<= 8;
+  val |= dataBuffer[startIndex + 1];
+  out = val * (1 / 256.0);
 }
 
 template <class StreamType>
@@ -342,26 +380,46 @@ void DofHandler<StreamType>::clearBuffer() {
 
 template <class StreamType>
 void DofHandler<StreamType>::printData(Stream &out) {
-  out.println("\n9DoF Data:");
-  out.print("{ { ");
-  out.print(data.accelX);
-  out.print(", ");
-  out.print(data.accelY);
-  out.print(", ");
-  out.print(data.accelZ);
-  out.print(" }, { ");
-  out.print(data.magX);
-  out.print(", ");
-  out.print(data.magY);
-  out.print(", ");
-  out.print(data.magZ);
-  out.print(" }, { ");
-  out.print(data.gyroX);
-  out.print(", ");
-  out.print(data.gyroY);
-  out.print(", ");
-  out.print(data.gyroZ);
-  out.println(" } }");
+  //out.println("\n9DoF Data:");
+  
+  if (lastPacketMode == DOF_DATA_MODE_ALL) {
+    out.print("(A){ { ");
+    out.print(data.accelX);
+    out.print(", ");
+    out.print(data.accelY);
+    out.print(", ");
+    out.print(data.accelZ);
+    out.print(" }, { ");
+    out.print(data.magX);
+    out.print(", ");
+    out.print(data.magY);
+    out.print(", ");
+    out.print(data.magZ);
+    out.print(" }, { ");
+    out.print(data.gyroX);
+    out.print(", ");
+    out.print(data.gyroY);
+    out.print(", ");
+    out.print(data.gyroZ);
+    out.println(" } }");
+  } else if (lastPacketMode == DOF_DATA_MODE_GYRO) {
+    out.print("(G){ ");
+    out.print(data.gyroX);
+    out.print(", ");
+    out.print(data.gyroY);
+    out.print(", ");
+    out.print(data.gyroZ);
+    out.println(" }");
+  } else if (lastPacketMode == DOF_DATA_MODE_EULER) {
+    out.print("(E){ ");
+    out.print(eulerData.yaw);
+    out.print(", ");
+    out.print(eulerData.pitch);
+    out.print(", ");
+    out.print(eulerData.roll);
+    out.println(" }");
+  }
+  
 }
 
 template <class StreamType>
@@ -415,7 +473,7 @@ void DofHandler<StreamType>::setContinuousStream(boolean continuous) {
 
 template <class StreamType>
 void DofHandler<StreamType>::requestData() {
-  stream->println("#f"); // Request _f_rame
+  stream->print("#f"); // Request _f_rame
 }
 
 template <class StreamType>
@@ -456,6 +514,33 @@ Baud rates above 28800 do not seem to work with sofware serial.
       return 9;
   }
   return -1;
+}
+
+template <class StreamType>
+void DofHandler<StreamType>::setDataMode(byte mode, boolean force) {
+  switch (mode) {
+    case DOF_DATA_MODE_ALL:
+    case DOF_DATA_MODE_GYRO:
+    case DOF_DATA_MODE_EULER:
+      break;
+    default:
+      mode = DOF_DATA_MODE_DEFAULT;
+  }
+  
+  clearBuffer();
+  if (force || dataMode != mode) {
+    stream->print("#m");
+    stream->write(mode);
+  }
+  
+  dataModeSize = DOF_DATA_MODE_SIZE[mode];
+  dataMode = mode;
+  
+}
+
+template <class StreamType>
+void DofHandler<StreamType>::zeroCalibrate() {
+  stream->print("#z"); // _z_ero calibrate
 }
 
 #endif
