@@ -18,21 +18,38 @@ void output_sensors_binary_packet() {
   // Magic number
   Serial.write('9'); Serial.write('D');
   Serial.write('o'); Serial.write('F');
-  
-  // Accelerometer
-  write_double(accel[0]);
-  write_double(accel[1]);
-  write_double(accel[2]);
-  
-  // Magnetometer
-  write_double(magnetom[0]);
-  write_double(magnetom[1]);
-  write_double(magnetom[2]);
-  
-  // Gyroscope
-  write_short((short)gyro[0]);
-  write_short((short)gyro[1]);
-  write_short((short)gyro[2]);
+  double temp;
+  switch (data_mode) {
+    case DATA_MODE_ALL: // 30 Bytes
+      // Accelerometer
+      temp = (accel[0] - accel_offset[0]) / GRAVITY;
+      write_double(temp);
+      temp = (accel[1] - accel_offset[1]) / GRAVITY;
+      write_double(temp);
+      temp = accel[2] / GRAVITY;
+      write_double(temp);
+      
+      // Magnetometer
+      write_double(magnetom[0]);
+      write_double(magnetom[1]);
+      write_double(magnetom[2]);
+      
+      // Gyroscope
+      write_short((short)(gyro[0] - gyro_offset[0]));
+      write_short((short)(gyro[1] - gyro_offset[1]));
+      write_short((short)(gyro[2] - gyro_offset[2]));
+      break;
+    case DATA_MODE_GYRO: // 6 Bytes
+      write_short((short)(gyro[0] - gyro_offset[0]));
+      write_short((short)(gyro[1] - gyro_offset[1]));
+      write_short((short)(gyro[2] - gyro_offset[2]));
+      break;
+    case DATA_MODE_EULER: // 12 Bytes
+      write_double(roll);
+      write_double(pitch);
+      write_double(yaw);
+      break;
+  }
   
   Serial.write('\n');
   

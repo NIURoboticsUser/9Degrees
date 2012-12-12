@@ -208,3 +208,12 @@ void Read_Gyro()
     if (output_errors) Serial.println("!ERR: reading gyroscope");
   }
 }
+
+void Zero_Calibrate() {
+  accel_offset[0] = accel[0];
+  accel_offset[1] = accel[1];
+  
+  gyro_offset[0] = gyro[0];
+  gyro_offset[1] = gyro[1];
+  gyro_offset[2] = gyro[2];
+}
