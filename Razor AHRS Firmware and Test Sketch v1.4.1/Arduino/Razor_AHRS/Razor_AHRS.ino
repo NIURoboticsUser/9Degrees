@@ -345,7 +345,7 @@ void loop()
     else
     { } // Skip character
   }
-
+  
   // Time to read the sensors again?
   if((millis() - timestamp) >= output_data_interval)
   {
@@ -399,6 +399,14 @@ void loop()
     Serial.print("loop time (ms) = ");
     Serial.println(millis() - timestamp);
 #endif
+  } else if (output_single_on) {
+    if (output_format == OUTPUT__FORMAT_TEXT) {
+      output_sensors_text();
+    } else {
+      output_sensors_binary_packet();
+    }
+    
+    output_single_on = false;
   }
 #if DEBUG__PRINT_LOOP_TIME == true
   else
