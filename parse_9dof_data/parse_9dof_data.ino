@@ -1,6 +1,6 @@
 #include <SoftwareSerial.h>
 
-#define DOF_DATA_INTERVAL 35 // Interval (milliseconds) between data sending, between 1 and 255 (inclusive)
+#define DOF_DATA_INTERVAL 30 // Interval (milliseconds) between data sending, between 1 and 255 (inclusive)
 #define DOF_DATA_CONTINUOUS false // Set to true to enable a continuous data stream on startup, false otherwise
 #define DOF_SERIAL_DEBUG false // Set to true to echo the 9DoF stream to Serial and do no processesing on data
 
@@ -18,7 +18,7 @@ void setup() {
   dofHandler.begin(9600, 28800);
   dofHandler.setContinuousStream(DOF_DATA_CONTINUOUS);
   dofHandler.setUpdateInterval(DOF_DATA_INTERVAL);
-  dofHandler.setDataMode(DOF_DATA_MODE_GYRO);
+  dofHandler.setDataMode(DOF_DATA_MODE_ALL);
 
 }
 
@@ -42,13 +42,15 @@ void loop() {
     sending = true;
   } 
   else {
-    if (dofHandler.checkStream()) {
+    if (dofHandler.checkStream(true)) {
       sending = false;
       time = millis() - time;
       if (dofHandler.isPacketGood()) {
-        dofHandler.printData(Serial);
+        //dofHandler.printData(Serial);
+        Serial.println(time);
         digitalWrite(13, LOW);
       } else {
+        Serial.println("Bad");
         digitalWrite(13, HIGH);
       }
       delay(100);

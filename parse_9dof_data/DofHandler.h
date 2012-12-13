@@ -6,6 +6,7 @@
 #define DOF_DATA_DEFAULT_INTERVAL 70 // Default data interval
 #define DOF_DATA_DEFAULT_CONTINUOUS false
 #define DOF_DATA_SIZE 30 // Packet's max data size is 30
+#define DOF_GYRO_SCALE (0.00390625) // Factor to scale gyro data by (1 / 256)
 
 #define DOF_DATA_MODE_ALL 0 // Send all sensor data (binary)
 #define DOF_DATA_MODE_GYRO 1 // Send Gyro data
@@ -14,82 +15,101 @@
 
 const byte DOF_DATA_MODE_SIZE[] = {30, 6, 12};
 
-/*
- DofHandler is designed to handle communications between a 9Degrees of Freedom board
- and the Arduino. In order to support HardwareSerial (Serial, Serial1, Serial2, Serial3)
- and SoftwareSerial, this must be a generic template class, as the base class of
- HardwareSerial and SoftwareSerial (Stream) does not have the begin() and end() methods
- needed for this class (ikr?).
- 
- This class uses approximately 4.5 KB of memory on the Arduino.
+/**
+ * DofHandler is designed to handle communications between a 9Degrees of Freedom board
+ * and the Arduino. In order to support HardwareSerial (Serial, Serial1, Serial2, Serial3)
+ * and SoftwareSerial, this must be a generic template class, as the base class of
+ * HardwareSerial and SoftwareSerial (Stream) does not have the begin() and end() methods
+ * needed for this class (ikr?).
+ * 
+ * This class uses approximately 4.5 KB of memory on the Arduino.
  */
 template <class StreamType> class DofHandler {
   public:
     /**
-     Constructs a DofHandler.
-     
-     @param dofStream Pointer to the Stream used for communication with the 9DoF
-     @param baud Baud rate that the stream was opened at, if it was at all. Optional
-    */
+     * Constructs a DofHandler.
+     * 
+     * @param dofStream Pointer to the Stream used for communication with the 9DoF
+     * @param baud Baud rate that the stream was opened at, if it was at all. Optional.
+     */
     DofHandler(StreamType *dofStream, int baud = 0);
     
     /**
-     Begins connection with the 9DoF. Does nothing if the stream has already been opened.
-     
-     If changing the baud rate to something other than the inital rate, pass that in as well.
-     Warning: this method will block for approx. 210 milliseconds if finalBaud is passed.
-     
-     @param initialBaud The baud rate to first create the connection at.
-     @param baud If changing the baud rate, pass in the new baud rate here. Optional.
+     * Begins connection with the 9DoF. Does nothing if the stream has already been opened.
+     * 
+     * If changing the baud rate to something other than the inital rate, pass that in as well.
+     * Warning: this method will block for approximately 210 milliseconds if finalBaud is passed.
+     * 
+     * @param initialBaud The baud rate to first create the connection at.
+     * @param baud If changing the baud rate, pass in the new baud rate here. Optional.
      */
     void begin(int initialBaud, int finalBaud = 0);
     
     /**
-     Closes the stream's connections (calls end() on the stream).
+     * Closes the stream's connections (calls end() on the stream).
      */
     void end();
-    
+	
     /**
-     Runs the code to check incoming stream data. Run this in the loop() function.
-     
-     @param loop Optional. If true, will loop through the check code until either a packet is found,
-       or there are no more bytes available in the stream.
-     
-     @return True if a packet was received (good or bad), false otherwise.
+     * Marks the DofHandler as open. This allows the stream to be opened
+     * after it has been passed into the DofHandler, but without needing to open
+     * it with DofHandler.begin().
+     *
+     * @param baud the baud rate that the stream is set to.
      */
-    boolean checkStream(boolean loop = false); // Check stream for data availablility (run in loop())
+    void markOpen(int baud);
     
     /**
-     If there is a character available to be read from the 9DoF stream, this echos that character.
-     
-     @param out Stream to echo character to.
+     * Runs the code to check incoming stream data. Run this in the loop() function.
+     * 
+     * @param loop Optional. If true, will loop through the check code until either a packet is found,
+     *   or there are no more bytes available in the stream.
+     * 
+     * @return true if a packet was received (good or bad), false otherwise.
+     */
+    boolean checkStream(boolean loop = false);
+    
+    /**
+     * If there is a character available to be read from the 9DoF stream, this echos that character.
+     * 
+     * @param out Stream to echo character to.
      */
     void debugRead(Stream &out);
     
+	/**
+	 * Gets the baud rate of the stream, as known to the DofHandler.
+	 * 
+	 * @return the baud rate being used by the stream
+	 */
     int getBaudRate() { return baudRate; }
     
-    /*
-     Sets the baud rate of the connection. By default, it also (attempts) to tell the 9DoF to change
-     its baud rate as well. This method may block for up to approx. 110 milliseconds.
-     
-     @param newBaud The baud rate to change to.
-     @param internal Optional. If true, the 9DoF will not be told to change it's baud rate as well. Defaults to false.
+    /**
+     * Sets the baud rate of the connection. By default, it also (attempts) to tell the 9DoF to change
+     * its baud rate as well. This method may block for up to approximately 110 milliseconds.
+     * 
+     * @param newBaud The baud rate to change to.
+     * @param internal Optional. If true, the 9DoF will not be told to change its baud rate as well. Defaults to false.
      */
     void setBaudRate(int newBaud, boolean internal = false);
     
+    /**
+     * Gets the update interval as known by the DofHandler
+     *
+     * @return the known update interval
+     */
     short getUpdateInterval() { return updateInterval; }
     
-    /*
-     Tells the 9DoF to change its update interval.
-     
-     @param newBaud The new update interval.
+    /**
+     * Tells the 9DoF to change its update interval.
+     * 
+     * @param newBaud The new update interval.
      */
     void setUpdateInterval(short interval);
     
     boolean isContinuousStream() { return continuousStream; }
     
-    /*
-     Enables or disables continuous data streaming from the 9DoF.
+    /**
+     * Enables or disables continuous data streaming from the 9DoF.
      */
     void setContinuousStream(boolean enable);
     void enableContinuousStream() { setContinuousStream(true); }
@@ -99,29 +119,51 @@ template <class StreamType> class DofHandler {
     
     void zeroCalibrate();
     
-    /*
-     Requests a single data frame from the 9DoF.
-     If the time since the last frame and this request is less than the update interval,
-     The frame will not be sent until the update interval passes.
+    /**
+     * Requests a single data frame from the 9DoF.
+     * If the time since the last frame and this request is less than the update interval,
+     * The frame will not be sent until the update interval passes.
      */
     void requestData();
-    DofData getData() { return data; }
-    EulerData getEulerData() { return eulerData; }
-    GyroData getGyroData() { return gyroData; }
-    boolean isNewDataAvailable() { if (newData) { newData = false; return true;} else return false; }
     
-    /*
-     Gets the age (in milliseconds) of the last good data frame.
+    /**
+     * Gets the most recent sensor data. Clears the newData flag.
+     *
+     * @return the most recent sensor data.
+     */
+    DofData getData() { newData = false; return data; }
+    
+    /**
+     * Gets the most recent euler angles data (yaw, pitch, roll). Clears the newData flag.
+     *
+     * @return the most recent euler angle data
+     */
+    EulerData getEulerData() { newData = false; return eulerData; }
+    
+    /**
+     * Gets the most recent gyroscope data. Clears the newData flag.
+     *
+     * @return the most recent gyroscope data
+     */
+    GyroData getGyroData() { newData = false; return gyroData; }
+    
+    /**
+     * Returns the newData flag.
+     */
+    boolean isNewDataAvailable() { return newData; }
+    
+    /**
+     * Gets the age (in milliseconds) of the last good data frame.
      */
     unsigned long getDataAge() { return millis() - dataTime; }
     
-    /*
-     Returns true if the last received packet was valid; false otherwise.
+    /**
+     * Returns true if the last received packet was valid; false otherwise.
      */
     boolean isPacketGood() { return lastPacketGood; }
     
-    /*
-     Prints out the sensor data to the passed in stream.
+    /**
+     * Prints out the sensor data to the passed in stream.
      */
     void printData(Stream &out);
   
@@ -224,6 +266,12 @@ void DofHandler<StreamType>::end() {
   
   stream->end();
   open = false;
+}
+
+template <class StreamType>
+void DofHandler<StreamType>::markOpen(int baud) {
+  open = true;
+  baudRate = baud;
 }
 
 template <class StreamType>
@@ -340,28 +388,38 @@ void DofHandler<StreamType>::readPacket() {
     read_short(26, data.gyroY);
     read_short(28, data.gyroZ);
     
+    data.gyroX *= DOF_GYRO_SCALE;
+    data.gyroY *= DOF_GYRO_SCALE;
+    data.gyroZ *= DOF_GYRO_SCALE;
+    
     gyroData.x = data.gyroX;
     gyroData.y = data.gyroY;
     gyroData.z = data.gyroZ;
+    
     gyroData.checkSum = (gyroData.x + gyroData.y + gyroData.z) % 10;
-    //this->data = data;
+    
     lastPacketMode = DOF_DATA_MODE_ALL;
   } else if (dataMode == DOF_DATA_MODE_GYRO) {
     read_short(0, data.gyroX);
     read_short(2, data.gyroY);
     read_short(4, data.gyroZ);
     
+    data.gyroX *= DOF_GYRO_SCALE;
+    data.gyroY *= DOF_GYRO_SCALE;
+    data.gyroZ *= DOF_GYRO_SCALE;
+    
     gyroData.x = data.gyroX;
     gyroData.y = data.gyroY;
     gyroData.z = data.gyroZ;
+    
     gyroData.checkSum = (gyroData.x + gyroData.y + gyroData.z) % 10;
-    //this->data = data;
+    
     lastPacketMode = DOF_DATA_MODE_GYRO;
   } else if (dataMode == DOF_DATA_MODE_EULER) {
     read_double(0, eulerData.roll);
     read_double(4, eulerData.pitch);
     read_double(8, eulerData.yaw);
-    //this->eulerData = euler;
+    
     lastPacketMode = DOF_DATA_MODE_EULER;
   }
   //this->data = data;
@@ -383,7 +441,7 @@ void DofHandler<StreamType>::read_short(byte startIndex, double &out) {
   short val = 0;
   val |= dataBuffer[startIndex]; val <<= 8;
   val |= dataBuffer[startIndex + 1];
-  out = val * (1 / 256.0);
+  out = val;
 }
 
 template <class StreamType>
