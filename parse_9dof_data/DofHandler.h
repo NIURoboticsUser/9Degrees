@@ -70,17 +70,26 @@ template <class StreamType> class DofHandler {
     boolean checkStream(boolean loop = false);
     
     /**
+     * Similar to checkStream(). Returns true when a good packet has been received,
+     * instead of when a packet has been received (good or bad). If a bad packet was
+     * received, request a new packet.
+     *
+     * @return true if a good packet was received, false otherwise.
+     */
+    boolean checkStreamValid(boolean loop = false);
+    
+    /**
      * If there is a character available to be read from the 9DoF stream, this echos that character.
      * 
      * @param out Stream to echo character to.
      */
     void debugRead(Stream &out);
     
-	/**
-	 * Gets the baud rate of the stream, as known to the DofHandler.
-	 * 
-	 * @return the baud rate being used by the stream
-	 */
+    /**
+     * Gets the baud rate of the stream, as known to the DofHandler.
+     * 
+     * @return the baud rate being used by the stream
+     */
     int getBaudRate() { return baudRate; }
     
     /**
@@ -125,10 +134,14 @@ template <class StreamType> class DofHandler {
     
     /**
      * Requests a single data frame from the 9DoF.
-     * If the time since the last frame and this request is less than the update interval,
-     * The frame will not be sent until the update interval passes.
      */
-    void requestData();
+    void requestData() { requestData(dataMode); }
+    
+    /**
+     * Requests a single data frame from the 9DoF, using the 
+     * passed mode.
+     */
+    void requestData(byte mode);
     
     /**
      * Gets the most recent sensor data. Clears the newData flag.
@@ -294,6 +307,22 @@ boolean DofHandler<StreamType>::checkStream(boolean loop) {
   }
   
   return false;
+}
+
+template <class StreamType>
+boolean DofHandler<StreamType>::checkStreamValid(boolean loop) {
+  boolean packet = checkStream(loop);
+  if (!packet) {
+    return false;
+  } else {
+    if (isPacketGood()) {
+      return true;
+    } else {
+      if (!continuousStream)
+        requestData();
+      return false;
+    }
+  }
 }
 
 template <class StreamType>
@@ -549,7 +578,8 @@ void DofHandler<StreamType>::setContinuousStream(boolean continuous) {
 }
 
 template <class StreamType>
-void DofHandler<StreamType>::requestData() {
+void DofHandler<StreamType>::requestData(byte mode) {
+  setDataMode(mode);
   stream->print("#f"); // Request _f_rame
 }
 
