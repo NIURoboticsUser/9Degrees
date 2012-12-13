@@ -116,6 +116,10 @@ template <class StreamType> class DofHandler {
     void disableContinuousStream() { setContinuousStream(false); }
     
     void setDataMode(byte mode, boolean force = false);
+	
+    byte getDataMode() { return dataMode; }
+    byte getLastDataMode() { return lastPacketMode; }
+	
     
     void zeroCalibrate();
     
