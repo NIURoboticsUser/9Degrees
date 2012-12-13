@@ -3,7 +3,7 @@
 #ifndef DofHandler_h
 #define DofHandler_h
 
-#define DOF_DATA_DEFAULT_INTERVAL 70 // Default data interval
+#define DOF_DATA_DEFAULT_INTERVAL 35 // Default data interval
 #define DOF_DATA_DEFAULT_CONTINUOUS false
 #define DOF_DATA_SIZE 30 // Packet's max data size is 30
 #define DOF_GYRO_SCALE (0.00390625) // Factor to scale gyro data by (1 / 256)
@@ -115,21 +115,42 @@ template <class StreamType> class DofHandler {
      */
     void setUpdateInterval(short interval);
     
-    boolean isContinuousStream() { return continuousStream; }
+    /**
+     * Returns true if the 9DoF is sending data continuously,
+     * every update interval
+     *
+     * @return true if the 9DoF is sending data continuously, false otherwise.
+     */
+    boolean isContinuousStreamEnabled() { return continuousStream; }
     
     /**
      * Enables or disables continuous data streaming from the 9DoF.
      */
     void setContinuousStream(boolean enable);
-    void enableContinuousStream() { setContinuousStream(true); }
-    void disableContinuousStream() { setContinuousStream(false); }
     
+    /**
+     * Sets the data mode that is sent by the 9DoF.
+     * See the DofHandler class documentation for details on
+     * the different modes.
+     */
     void setDataMode(byte mode, boolean force = false);
-	
-    byte getDataMode() { return dataMode; }
-    byte getLastDataMode() { return lastPacketMode; }
-	
     
+    /**
+     * Returns the currently active data mode. The next valid data packet
+     * will use this data mode.
+     */
+    byte getDataMode() { return dataMode; }
+    
+    /**
+     * Returns the data mode of the last received packet.
+     */
+    byte getLastDataMode() { return lastPacketMode; }
+    
+    
+    /**
+     * Tells the 9DoF to zero calibrate the X and Y of the accelerometer,
+     * and the X, Y, and Z of the gyroscope.
+     */
     void zeroCalibrate();
     
     /**
@@ -166,16 +187,22 @@ template <class StreamType> class DofHandler {
     
     /**
      * Returns the newData flag.
+     *
+     * @return the new data flag
      */
     boolean isNewDataAvailable() { return newData; }
     
     /**
      * Gets the age (in milliseconds) of the last good data frame.
+     *
+     * @return the age of the most recently received data
      */
     unsigned long getDataAge() { return millis() - dataTime; }
     
     /**
      * Returns true if the last received packet was valid; false otherwise.
+     *
+     * @return true if the last packet was valid and well formed, false otherwise
      */
     boolean isPacketGood() { return lastPacketGood; }
     
