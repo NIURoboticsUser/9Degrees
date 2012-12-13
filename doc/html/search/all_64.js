@@ -1,7 +1,6 @@
 var searchData=
 [
   ['debugread',['debugRead',['../class_dof_handler.html#afd5a1b22e8b718d484be5e60723b3f7f',1,'DofHandler']]],
-  ['disablecontinuousstream',['disableContinuousStream',['../class_dof_handler.html#a70b21e08313858e817b740f296a03b16',1,'DofHandler']]],
   ['dof_5fdata_5fdefault_5fcontinuous',['DOF_DATA_DEFAULT_CONTINUOUS',['../_dof_handler_8h.html#abaca6e56f0b628da6079d53ba4a43b7b',1,'DofHandler.h']]],
   ['dof_5fdata_5fdefault_5finterval',['DOF_DATA_DEFAULT_INTERVAL',['../_dof_handler_8h.html#a953411b5edcacf0e93377c22578be5a0',1,'DofHandler.h']]],
   ['dof_5fdata_5fmode_5fall',['DOF_DATA_MODE_ALL',['../_dof_handler_8h.html#aa15e2fe8db5e0279aaa9d48cda1a57a0',1,'DofHandler.h']]],
