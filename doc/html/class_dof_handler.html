@@ -155,8 +155,10 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:aca0c47b133333c5385ecf7d094d7a8ab"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5245e4a1b3dd0f70da07554b52c62662"><td class="memItemLeft" align="right" valign="top"><a class="el" href="struct_gyro_data.html">GyroData</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_dof_handler.html#a5245e4a1b3dd0f70da07554b52c62662">getGyroData</a> ()</td></tr>
 <tr class="separator:a5245e4a1b3dd0f70da07554b52c62662"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aba34225832d2af726f00df12e4d7b5f9"><td class="memItemLeft" align="right" valign="top">boolean&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_dof_handler.html#aba34225832d2af726f00df12e4d7b5f9">isNewDataAvailable</a> ()</td></tr>
-<tr class="separator:aba34225832d2af726f00df12e4d7b5f9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a25cd0760573e87247c46cc9e54c4f5a8"><td class="memItemLeft" align="right" valign="top">boolean&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_dof_handler.html#a25cd0760573e87247c46cc9e54c4f5a8">isNewDataAvailable</a> (boolean clear=false)</td></tr>
+<tr class="separator:a25cd0760573e87247c46cc9e54c4f5a8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a54ea29d26ecbed7edd82baef0b02679f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_dof_handler.html#a54ea29d26ecbed7edd82baef0b02679f">clearNewDataFlag</a> ()</td></tr>
+<tr class="separator:a54ea29d26ecbed7edd82baef0b02679f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1ac23ca83a1b30c2535f0a920b35bd9b"><td class="memItemLeft" align="right" valign="top">unsigned long&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_dof_handler.html#a1ac23ca83a1b30c2535f0a920b35bd9b">getDataAge</a> ()</td></tr>
 <tr class="separator:a1ac23ca83a1b30c2535f0a920b35bd9b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2d3a82910a5eeb96ef07b4ca80f91299"><td class="memItemLeft" align="right" valign="top">boolean&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_dof_handler.html#a2d3a82910a5eeb96ef07b4ca80f91299">isPacketGood</a> ()</td></tr>
@@ -288,6 +290,32 @@ template&lt;class StreamType &gt; </div>
 </div><div class="memdoc">
 <p>Similar to <a class="el" href="class_dof_handler.html#a2d5969968005210d1ac30e3e15fdd95b">checkStream()</a>. Returns true when a good packet has been received, instead of when a packet has been received (good or bad). If a bad packet was received, request a new packet.</p>
 <dl class="section return"><dt>Returns</dt><dd>true if a good packet was received, false otherwise. </dd></dl>
+
+</div>
+</div>
+<a class="anchor" id="a54ea29d26ecbed7edd82baef0b02679f"></a>
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;class StreamType &gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void <a class="el" href="class_dof_handler.html">DofHandler</a>&lt; StreamType &gt;::clearNewDataFlag </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>Clears the newData flag. </p>
 
 </div>
 </div>
@@ -575,7 +603,7 @@ template&lt;class StreamType &gt; </div>
 
 </div>
 </div>
-<a class="anchor" id="aba34225832d2af726f00df12e4d7b5f9"></a>
+<a class="anchor" id="a25cd0760573e87247c46cc9e54c4f5a8"></a>
 <div class="memitem">
 <div class="memproto">
 <div class="memtemplate">
@@ -587,7 +615,8 @@ template&lt;class StreamType &gt; </div>
         <tr>
           <td class="memname">boolean <a class="el" href="class_dof_handler.html">DofHandler</a>&lt; StreamType &gt;::isNewDataAvailable </td>
           <td>(</td>
-          <td class="paramname"></td><td>)</td>
+          <td class="paramtype">boolean&#160;</td>
+          <td class="paramname"><em>clear</em> = <code>false</code></td><td>)</td>
           <td></td>
         </tr>
       </table>
@@ -597,7 +626,13 @@ template&lt;class StreamType &gt; </div>
   </tr>
 </table>
 </div><div class="memdoc">
-<p>Returns the newData flag.</p>
+<p>Returns the newData flag. This is true when any packet (good or bad) has been received. Resets when a get*Data method is called, <a class="el" href="class_dof_handler.html#a54ea29d26ecbed7edd82baef0b02679f">clearNewDataFlag()</a> is called, or when true is passed into this method.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">clear</td><td>clears the newData flag after returning the flag's state.</td></tr>
+  </table>
+  </dd>
+</dl>
 <dl class="section return"><dt>Returns</dt><dd>the new data flag </dd></dl>
 
 </div>
@@ -854,7 +889,7 @@ template&lt;class StreamType &gt; </div>
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
     <li class="navelem"><a class="el" href="class_dof_handler.html">DofHandler</a></li>
-    <li class="footer">Generated on Thu Dec 13 2012 00:30:03 for 9DoF by
+    <li class="footer">Generated on Fri Dec 14 2012 18:18:49 for 9DoF by
     <a href="http://www.doxygen.org/index.html">
     <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.8.2 </li>
   </ul>
