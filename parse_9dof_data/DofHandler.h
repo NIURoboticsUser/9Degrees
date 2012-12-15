@@ -1,3 +1,5 @@
+#include "Arduino.h"
+
 #include "DofData.h"
 
 #ifndef DofHandler_h
@@ -186,11 +188,21 @@ template <class StreamType> class DofHandler {
     GyroData getGyroData() { newData = false; return gyroData; }
     
     /**
-     * Returns the newData flag.
+     * Returns the newData flag. This is true when any packet (good or bad)
+     * has been received. Resets when a get*Data method is called,
+     * clearNewDataFlag() is called, or when true is passed into this method.
+     *
+     * @param clear clears the newData flag after returning the flag's state.
      *
      * @return the new data flag
      */
-    boolean isNewDataAvailable() { return newData; }
+    boolean isNewDataAvailable(boolean clear = false)
+      { if (newData) { newData = !clear; return true ;} return false; }
+    
+    /**
+     * Clears the newData flag.
+     */
+    void clearNewDataFlag() { newData = false; }
     
     /**
      * Gets the age (in milliseconds) of the last good data frame.
@@ -345,6 +357,7 @@ boolean DofHandler<StreamType>::checkStreamValid(boolean loop) {
     if (isPacketGood()) {
       return true;
     } else {
+      clearNewDataFlag();
       if (!continuousStream)
         requestData();
       return false;
@@ -452,9 +465,9 @@ void DofHandler<StreamType>::readPacket() {
     data.gyroY *= DOF_GYRO_SCALE;
     data.gyroZ *= DOF_GYRO_SCALE;
     
-    gyroData.x = data.gyroX;
-    gyroData.y = data.gyroY;
-    gyroData.z = data.gyroZ;
+    gyroData.x = data.gyroX * 100;
+    gyroData.y = data.gyroY * 100;
+    gyroData.z = data.gyroZ * 100;
     
     gyroData.checkSum = (gyroData.x + gyroData.y + gyroData.z) % 10;
     
@@ -468,9 +481,9 @@ void DofHandler<StreamType>::readPacket() {
     data.gyroY *= DOF_GYRO_SCALE;
     data.gyroZ *= DOF_GYRO_SCALE;
     
-    gyroData.x = data.gyroX;
-    gyroData.y = data.gyroY;
-    gyroData.z = data.gyroZ;
+    gyroData.x = data.gyroX * 100;
+    gyroData.y = data.gyroY * 100;
+    gyroData.z = data.gyroZ * 100;
     
     gyroData.checkSum = (gyroData.x + gyroData.y + gyroData.z) % 10;
     
