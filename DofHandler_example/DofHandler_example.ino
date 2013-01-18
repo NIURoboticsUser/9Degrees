@@ -1,22 +1,22 @@
 // The next two lines are for using SoftwareSerial instead of HardwareSerial
-//#include <SoftwareSerial.h>
-//SoftwareSerial dofSerial(2, 3); // RX, TX
+#include <SoftwareSerial.h>
+SoftwareSerial dofSerial(2, 3); // RX, TX
 
 #include "DofData.h"
 #include "DofHandler.h"
 // If you are using SoftwareSerial, uncomment the next line
-//DofHandler<SoftwareSerial> dofHandler(&dofSerial);
+DofHandler<SoftwareSerial> dofHandler(&dofSerial);
 
 // If you are using Hardware Serial (Serial, Serial1, etc.),
 // uncomment the next line
-DofHandler<HardwareSerial> dofHandler(&Serial);
+//DofHandler<HardwareSerial> dofHandler(&Serial);
 
 
 
 void setup() {
   // Uncomment if you are not using the main Serial line to
   // communicate with the 9DoF
-  //Serial.begin(38400);
+  Serial.begin(38400);
 
   // Connect to the 9DoF at 9600 baud to tell it to
   // upgrade to 28800 baud.
@@ -32,14 +32,14 @@ void setup() {
     
     Defaults to DOF_DATA_MODE_ALL.
   */
-  dofHandler.setDataMode(DOF_DATA_MODE_GYRO);
+  dofHandler.setDataMode(DOF_DATA_MODE_ALL);
   
   // This is the rate (in milliseconds) that the 9DoF will read
   // from its sensors. That is, this is how often requests from the 9Dof
   // will come back with new and different data; requests for data
   // more frequent than this will get stale data. It is best to set this
   // to be about the time it takes you process the data.
-  dofHandler.setUpdateInterval(20);
+  dofHandler.setUpdateInterval(40);
   
   // Send out a request for data from the 9DoF.
   dofHandler.requestData();
@@ -85,6 +85,8 @@ void loop() {
         // Now, we can do stuff with our euler data.
         } break;
     }
+    
+    dofHandler.printData(Serial);
   }
 }
 

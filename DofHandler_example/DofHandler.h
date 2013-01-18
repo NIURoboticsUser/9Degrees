@@ -535,13 +535,13 @@ void DofHandler<StreamType>::printData(Stream &out) {
     out.print(data.accelY);
     out.print(", ");
     out.print(data.accelZ);
-    out.print(" }, { ");
+    out.print(" }, (M){ ");
     out.print(data.magX);
     out.print(", ");
     out.print(data.magY);
     out.print(", ");
     out.print(data.magZ);
-    out.print(" }, { ");
+    out.print(" }, (G){ ");
     out.print(data.gyroX);
     out.print(", ");
     out.print(data.gyroY);
