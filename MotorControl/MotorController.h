@@ -3,22 +3,10 @@
 #ifndef _MotorController_h
 #define _MotorController_h
 
-#ifndef MOTOR_FRONT
-  #define MOTOR_FRONT 0x1
-#endif
-
-#ifndef MOTOR_LEFT
-  #define MOTOR_LEFT 0x2
-#endif
-
-#ifndef MOTOR_RIGHT
-  #define MOTOR_RIGHT 0x4
-#endif
-
-#ifndef MOTOR_BACK
-  #define MOTOR_BACK 0x8
-#endif
-
+#define MOTOR_FRONT 0x1
+#define MOTOR_LEFT 0x2
+#define MOTOR_RIGHT 0x4
+#define MOTOR_BACK 0x8
 #define MOTOR_ALL (MOTOR_FRONT | MOTOR_BACK | MOTOR_LEFT | MOTOR_RIGHT)
 
 #ifndef MOTOR_ARM_VALUE
@@ -26,7 +14,7 @@
 #endif
 
 #ifndef MOTOR_MIN_SPEED_VALUE
-  #define MOTOR_MIN_SPEED_VALUE 150 // Minimum value to be armed
+  #define MOTOR_MIN_SPEED_VALUE 150 // Value for the lowest speed on the motors
 #endif
 
 #ifndef MOTOR_FRONT_PIN
@@ -50,27 +38,102 @@
 #define MOTOR_LEFT_I 2
 #define MOTOR_BACK_I 3
 
+/**
+ * This class allows you to controll the four motors of the quadcopter easily.
+ * <c>MotorController</c> is setup for use with HK-50A ESC and Turnigy D3548/6 790KV motors.
+ *
+ * To refer to the various motors, use the constants <c>MOTOR_FRONT</c>, <c>MOTOR_BACK</c>, <c>MOTOR_LEFT</c>, and <c>MOTOR_RIGHT</c>
+ * for the front, back, left, and right motors, respectively.
+ * These constants may be bitwise OR'ed together in all functions ask for which motors to use, except for <c>get</c> functions.
+ * For example, <c>armMotor(MOTOR_FRONT | MOTOR_BACK);</c> to arm the front and back motors with one function call.
+ * The <c>MOTOR_ALL</c> constant can be used to refer to all motors at the same time.
+ *
+ * The PWM pin defaults may be changed by defining <c>MOTOR_FRONT_PIN</c>, <c>MOTOR_BACK_PIN</c>, <c>MOTOR_LEFT_PIN</c>,
+ * and <c>MOTOR_RIGHT_PIN</c> for the front, back, left, and right motors, respectively.
+ * Note that these constants must be defined <i>before</i> including <c>MotorController.h</c>
+ * 
+ * Motors must be armed before they are used, either by arming individual motors via <c>armMotor(MOTOR_?);</c>,
+ * or with <c>armMotors();</c> (which is equivalent to <c>armMotor(MOTOR_ALL);</c>).
+ * 
+ * The ESC may be programmed through this class. Programming occurs on all motors at the same time.
+ * To enable programming, define the <c>MOTOR_PROGRAMMING_ENABLED</c> constant before including this file.
+ * Programming mode is entered the first time <c>changeSetting()</c> is called, and left when <c>exitProgramming()</c> is called.
+ * When modifying multiple settings, you must call the next <c>changeSetting()</c> call immediately after the previous one completes.
+ * Automatic programming depends on accurate timing, and any delay between calls may result in inproper programming.
+ * Note that both methods block for several seconds, depending on what option and setting is being changed.
+ */
 class MotorController {
   public:
+    /**
+     * Instantiates the <c>MotorController</c>.
+     */
     MotorController();
+    /**
+     * Sets the speed of the motor with a value from 0 to 255. Multiple motors may be selected.
+     */
     void setMotorSpeed(byte motors, byte speed);
+    
+    /**
+     * Gets the speed of a single motor, returning the same speed passed to <c>setMotorSpeed</c>.
+     */
     byte getMotorSpeed(byte motor);
     
+    /**
+     * Adds a speed to the selected motors.
+     * <c>speed</c> may be negative, but the resultant speed
+     * of the motors will be clamped between 0 and 255, inclusive.
+     */
+    void addMotorSpeed(byte motors, short speed);
+    
+    /**
+     * Adds a speed frpm the selected motors.
+     * <c>speed</c> may be negative, but the resultant speed
+     * of the motors will be clamped between 0 and 255, inclusive.
+     */
+    void subtractMotorSpeed(byte motors, short speed) { addMotorSpeed(motors, -speed); }
+    
+    /**
+     * Returns true if all of the selected motors are armed, false otherwise.
+     */
     boolean isArmed(byte motors);
+    
+    /**
+     * Returns true if all motors are armed, false otherwise.
+     * Same as calling <c>isArmed(MOTOR_ALL);</c>.
+     */
     boolean isArmed() { return isArmed(MOTOR_ALL); }
+    
+    /**
+     * Arms the selected motor.
+     */
     void armMotor(byte motors);
+    
+    /**
+     * Disarms the selected motor.
+     * Note that if the motors are currently running, 
+     * they will take a few seconds before spinning down.
+     */
     void disarmMotor(byte motors);
+    
+    /**
+     * Arms all the motors. Same as calling <c>armMotor(MOTOR_ALL)</c>.
+     */
     void armMotors() { armMotor(MOTOR_ALL); }
+    
+    /**
+     * Disarms all the motors. Same as calling <c>disarmMotor(MOTOR_ALL)</c>.
+     */
     void disarmMotors() { disarmMotor(MOTOR_ALL); }
     
-    void setMotorRaw(byte motor, byte raw);
+    /**
+     * Gets the raw PWM value that is being sent to the selected motors.
+     */
+    void setMotorRaw(byte motors, byte raw);
+    
+    /**
+     * Gets the raw PWM value that is being sent to the motor.
+     */
     byte getMotorRaw(byte motor);
-    
-#ifdef MOTOR_PROGRAMMING_ENABLED
-    void changeSetting(byte option, byte setting);
-    void exitProgramming();
-    
-#endif
     
   private:
     byte armedMask;
@@ -78,6 +141,19 @@ class MotorController {
     byte motorRaw[4];
 
 #ifdef MOTOR_PROGRAMMING_ENABLED
+  public:
+    
+    /**
+     * Changes the given option to the given setting. This method blocks for many seconds.
+     */
+    void changeSetting(byte option, byte setting);
+    
+    /**
+     * Exits programming mode. This method blocks for 5 seconds.
+     */
+    void exitProgramming();
+    
+  private:
     boolean programmingMode;
 #endif
 };
@@ -136,26 +212,22 @@ byte MotorController::getMotorSpeed(byte motor) {
 }
 
 void MotorController::setMotorRaw(byte motor, byte raw) {
-  if (motor == MOTOR_ALL) {
-    setMotorRaw(MOTOR_FRONT, raw);
-    setMotorRaw(MOTOR_BACK, raw);
-    setMotorRaw(MOTOR_RIGHT, raw);
-    setMotorRaw(MOTOR_LEFT, raw);
-    return;
-  }
-  if (motor == MOTOR_FRONT) {
+  if (motor & MOTOR_FRONT) {
     motorRaw[MOTOR_FRONT_I] = raw;
     analogWrite(MOTOR_FRONT_PIN, raw);
-    
-  } else if (motor == MOTOR_BACK) {
+  }
+  
+  if (motor & MOTOR_BACK) {
     motorRaw[MOTOR_BACK_I] = raw;
     analogWrite(MOTOR_BACK_PIN, raw);
-    
-  } else if (motor == MOTOR_LEFT) {
+  }
+  
+  if (motor & MOTOR_LEFT) {
     motorRaw[MOTOR_LEFT_I] = raw;
     analogWrite(MOTOR_LEFT_PIN, raw);
-    
-  } else if (motor == MOTOR_RIGHT) {
+  }
+  
+  if (motor & MOTOR_RIGHT) {
     motorRaw[MOTOR_RIGHT_I] = raw;
     analogWrite(MOTOR_RIGHT_PIN, raw);
   }
@@ -175,15 +247,23 @@ byte MotorController::getMotorRaw(byte motor) {
   return 0;
 }
 
-inline boolean MotorController::isArmed(byte motors) {
+boolean MotorController::isArmed(byte motors) {
   if (motors & MOTOR_FRONT) {
-    return !(armedMask & MOTOR_FRONT == MOTOR_FRONT);
+    if (!(armedMask & MOTOR_FRONT == MOTOR_FRONT)) {
+      return false;
+    }
   } else if (motors & MOTOR_BACK) {
-    return !(armedMask & MOTOR_BACK == MOTOR_BACK);
+    if (!(armedMask & MOTOR_BACK == MOTOR_BACK)) {
+      return false;
+    }
   } else if (motors & MOTOR_LEFT) {
-    return !(armedMask & MOTOR_LEFT == MOTOR_LEFT);
+    if (!(armedMask & MOTOR_LEFT == MOTOR_LEFT)) {
+      return false;
+    }
   } else if (motors & MOTOR_RIGHT) {
-    return !(armedMask & MOTOR_RIGHT == MOTOR_RIGHT);
+    if (!(armedMask & MOTOR_RIGHT == MOTOR_RIGHT)) {
+      return false;
+    }
   }
 }
 
@@ -239,6 +319,55 @@ void MotorController::disarmMotor(byte motors) {
   }
 }
 
+void MotorController::addMotorSpeed(byte motors, short speed) {
+
+#define _CALC_NEW_SPEED() if (speed > 0) { \
+                            if ((short)currentSpeed + speed >= 255) { newSpeed = 255; } \
+                            else { newSpeed = currentSpeed + speed; } \
+                          } else { \
+                            if ((-speed) >= currentSpeed) { newSpeed = 0; } \
+                            else { newSpeed = currentSpeed - speed; } \
+                          }
+
+  if (speed == 0) {
+    return;
+  }
+  
+  byte currentSpeed, newSpeed;
+  if (motors & MOTOR_FRONT) {
+    currentSpeed = motorSpeeds[MOTOR_FRONT_I];
+    
+    _CALC_NEW_SPEED()
+    
+    setMotorSpeed(MOTOR_FRONT, newSpeed);
+  }
+  
+  if (motors & MOTOR_BACK) {
+    currentSpeed = motorSpeeds[MOTOR_BACK_I];
+    
+    _CALC_NEW_SPEED()
+    
+    setMotorSpeed(MOTOR_BACK, newSpeed);
+  }
+  
+  if (motors & MOTOR_LEFT) {
+    currentSpeed = motorSpeeds[MOTOR_LEFT_I];
+    
+    _CALC_NEW_SPEED()
+    
+    setMotorSpeed(MOTOR_LEFT, newSpeed);
+  }
+  
+  if (motors & MOTOR_RIGHT) {
+    currentSpeed = motorSpeeds[MOTOR_RIGHT_I];
+    
+    _CALC_NEW_SPEED()
+    
+    setMotorSpeed(MOTOR_RIGHT, newSpeed);
+  }
+
+#undef _CALC_NEW_SPEED
+}
 
 #ifdef MOTOR_PROGRAMMING_ENABLED
 
@@ -275,12 +404,13 @@ void MotorController::changeSetting(byte option, byte setting) {
 }
 
 void MotorController::exitProgramming() {
-  setMotorRaw(MOTOR_ALL, 0);
-  programmingMode = false;
-  delay(5000);
+  if (programmingMode) {
+    setMotorRaw(MOTOR_ALL, 0);
+    programmingMode = false;
+    delay(5000);
+  }
 }
 
-#endif
+#endif // MOTOR_PROGRAMMING_ENABLED
 
-
-#endif
+#endif // Double include protection
