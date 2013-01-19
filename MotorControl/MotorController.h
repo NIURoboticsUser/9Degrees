@@ -14,11 +14,11 @@
 #endif
 
 #ifndef MOTOR_MIN_SPEED_VALUE
-  #define MOTOR_MIN_SPEED_VALUE 150 // Value for the lowest speed on the motors
+  #define MOTOR_MIN_SPEED_VALUE 127 // Value for the lowest speed on the motors
 #endif
 
 #ifndef MOTOR_FRONT_PIN
-  #define MOTOR_FRONT_PIN 3
+  #define MOTOR_FRONT_PIN 11
 #endif
 
 #ifndef MOTOR_RIGHT_PIN
@@ -214,22 +214,34 @@ byte MotorController::getMotorSpeed(byte motor) {
 void MotorController::setMotorRaw(byte motor, byte raw) {
   if (motor & MOTOR_FRONT) {
     motorRaw[MOTOR_FRONT_I] = raw;
-    analogWrite(MOTOR_FRONT_PIN, raw);
+    if (raw > 0)
+      analogWrite(MOTOR_FRONT_PIN, raw);
+    else
+      digitalWrite(MOTOR_FRONT_PIN, LOW);
   }
   
   if (motor & MOTOR_BACK) {
     motorRaw[MOTOR_BACK_I] = raw;
-    analogWrite(MOTOR_BACK_PIN, raw);
+    if (raw > 0)
+      analogWrite(MOTOR_BACK_PIN, raw);
+    else
+      digitalWrite(MOTOR_BACK_PIN, LOW);
   }
   
   if (motor & MOTOR_LEFT) {
     motorRaw[MOTOR_LEFT_I] = raw;
-    analogWrite(MOTOR_LEFT_PIN, raw);
+    if (raw > 0)
+      analogWrite(MOTOR_LEFT_PIN, raw);
+    else
+      digitalWrite(MOTOR_LEFT_PIN, LOW);
   }
   
   if (motor & MOTOR_RIGHT) {
     motorRaw[MOTOR_RIGHT_I] = raw;
-    analogWrite(MOTOR_RIGHT_PIN, raw);
+    if (raw > 0)
+      analogWrite(MOTOR_RIGHT_PIN, raw);
+    else
+      digitalWrite(MOTOR_RIGHT_PIN, LOW);
   }
 }
 
