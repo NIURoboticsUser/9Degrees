@@ -74,6 +74,24 @@ void output_sensors_text()
   Serial.print(gyro[2]); Serial.println();
 }
 
+void output_sensors_text_single() // Single line
+{
+  Serial.print("#A");
+  Serial.print(accel[0]); Serial.print(",");
+  Serial.print(accel[1]); Serial.print(",");
+  Serial.print(accel[2]); Serial.print(",");
+
+  Serial.print('M');
+  Serial.print(magnetom[0]); Serial.print(",");
+  Serial.print(magnetom[1]); Serial.print(",");
+  Serial.print(magnetom[2]); Serial.print(",");
+
+  Serial.print('G');
+  Serial.print(gyro[0]); Serial.print(",");
+  Serial.print(gyro[1]); Serial.print(",");
+  Serial.print(gyro[2]); Serial.print('\n');
+}
+
 void output_calibration(int calibration_sensor)
 {
   if (calibration_sensor == 0)  // Accelerometer

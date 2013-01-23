@@ -382,7 +382,8 @@ void loop()
       
       if (output_stream_on || output_single_on){
         if (output_format == OUTPUT__FORMAT_TEXT) {
-          output_sensors_text();
+          //output_sensors_text();
+          output_sensors_text_single();
         } else {
           output_sensors_binary_packet();
         }
@@ -401,7 +402,8 @@ void loop()
 #endif
   } else if (output_single_on) {
     if (output_format == OUTPUT__FORMAT_TEXT) {
-      output_sensors_text();
+      //output_sensors_text();
+      output_sensors_text_single();
     } else {
       output_sensors_binary_packet();
     }
