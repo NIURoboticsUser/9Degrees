@@ -77,6 +77,7 @@ float Temporary_Matrix[3][3] = {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}};
 float yaw;
 float pitch;
 float roll;
+float euler_offset[3] = {0}; // [Yaw, pitch, roll]
 
 // DCM timing in the main loop
 unsigned long timestamp;

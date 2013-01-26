@@ -45,9 +45,12 @@ void output_sensors_binary_packet() {
       write_short((short)(gyro[2] - gyro_offset[2]));
       break;
     case DATA_MODE_EULER: // 12 Bytes
-      write_double(roll);
-      write_double(pitch);
-      write_double(yaw);
+      double temp = roll - euler_offset[2];
+      write_double(temp);
+      temp = pitch - euler_offset[1];
+      write_double(temp);
+      temp = yaw - euler_offset[0];
+      write_double(temp);
       break;
   }
   

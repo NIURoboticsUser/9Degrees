@@ -216,4 +216,8 @@ void Zero_Calibrate() {
   gyro_offset[0] = gyro[0];
   gyro_offset[1] = gyro[1];
   gyro_offset[2] = gyro[2];
+  
+  euler_offset[0] = yaw;
+  euler_offset[1] = pitch;
+  euler_offset[2] = roll;
 }
