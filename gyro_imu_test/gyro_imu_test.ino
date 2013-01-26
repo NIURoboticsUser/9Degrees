@@ -67,8 +67,7 @@ void setup(){
   Serial.println("Setting 1...");
   //controller.changeSetting(1, 5);
   Serial.println("Setting 2...");
-  controller.changeSetting(2, 1);
-  //controller.changeSetting(3, 4);
+  //controller.changeSetting(3, 4); // Hard brake
   Serial.println("Setting 3...");
   //controller.changeSetting(4, 1); // Clockwise rotation
   //controller.changeSetting(4, 2); // Counter-Clockwise rotation
@@ -104,17 +103,19 @@ void setup(){
 }
 
 void loop(){
-  
+  boolean setThrust = false;
   if(Serial.available()){
-    if (Serial.peek() == 'z') {
+    char c = Serial.peek();
+    if (c == 'z') {
       Serial.read();
       dofHandler.zeroCalibrate();
-    } else if (Serial.peek() == 'k') {
+    } else if (c == 'k') {
       Serial.read();
       kill = !kill;
       noDof = kill;
       controller.setMotorSpeed(MOTOR_ALL, 0);
-    } else if (Serial.peek() == 's') {
+    } else if (c == 's') {
+      Serial.read();
       noDof = true;
       Serial.println("Dropping");
       for (int i = 0; i < 20; i++) {
@@ -123,10 +124,14 @@ void loop(){
       }
       Serial.println("Dropped");
       noDof = true;
-    } else if (Serial.peek() == 'r') {
+    } else if (c == 'r') {
+      Serial.read();
       dofHandler.zeroCalibrate();
       kill = false;
       noDof = false;
+    } else if (c == 't') {
+      Serial.read();
+      setThrust = true;
     }
  
     static char charray[10];
@@ -140,7 +145,11 @@ void loop(){
     int num = atoi(charray);
     
     //for(int i=MOTOR_FRONT; i<=MOTOR_BACK; i++) motorValues[i]+=num;
-    controller.setMotorSpeed(MOTOR_ALL, num);
+    if (setThrust) {
+      controller.setMotorThrust(MOTOR_ALL, num);
+    } else {
+      controller.setMotorSpeed(MOTOR_ALL, num);
+    }
     //targetSpeed = constrain(targetSpeed + num, 0, 255);
     
   }

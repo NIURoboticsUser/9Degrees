@@ -53,6 +53,40 @@
   #define MOTOR_RIGHT_RAW_OFFSET 0
 #endif
 
+// PWM(motor) = (thrust + MOTOR_motor_THRUST_A) / MOTOR_motor_THRUST_B;
+
+#ifndef MOTOR_FRONT_THRUST_A
+  #define MOTOR_FRONT_THRUST_A 54
+#endif
+
+#ifndef MOTOR_FRONT_THRUST_B
+  #define MOTOR_FRONT_THRUST_B 184.93
+#endif
+
+#ifndef MOTOR_RIGHT_THRUST_A
+  #define MOTOR_RIGHT_THRUST_A 14.33
+#endif
+
+#ifndef MOTOR_RIGHT_THRUST_B
+  #define MOTOR_RIGHT_THRUST_B 158.48
+#endif
+
+#ifndef MOTOR_BACK_THRUST_A
+  #define MOTOR_BACK_THRUST_A 16.73
+#endif
+
+#ifndef MOTOR_BACK_THRUST_B
+  #define MOTOR_BACK_THRUST_B 161.9
+#endif
+
+#ifndef MOTOR_LEFT_THRUST_A
+  #define MOTOR_LEFT_THRUST_A 34.722
+#endif
+
+#ifndef MOTOR_LEFT_THRUST_B
+  #define MOTOR_LEFT_THRUST_B 174.17
+#endif
+
 #define MOTOR_FRONT_I 0
 #define MOTOR_RIGHT_I 1
 #define MOTOR_LEFT_I 2
@@ -154,6 +188,16 @@ class MotorController {
      * Gets the raw PWM value that is being sent to the motor.
      */
     byte getMotorRaw(byte motor);
+    
+    /**
+     * Sets the thrust of the selected motors.
+     */
+     void setMotorThrust(byte motors, uint16_t thrust);
+     
+     /**
+      * Gets the thrust of the selected motors.
+      */
+     uint16_t getMotorThrust(byte motor);
     
   private:
     byte armedMask;
@@ -399,6 +443,48 @@ void MotorController::addMotorSpeed(byte motors, short speed) {
   }
 
 #undef _CALC_NEW_SPEED
+}
+
+void MotorController::setMotorThrust(byte motors, uint16_t thrust) {
+  double pwm;
+  if (motors & MOTOR_FRONT) {
+    pwm = (thrust + MOTOR_FRONT_THRUST_A) / MOTOR_FRONT_THRUST_B;
+    setMotorRaw(MOTOR_FRONT, pwm);
+    motorSpeeds[MOTOR_FRONT_I] = (pwm >= MOTOR_MIN_SPEED_VALUE ? map(pwm, MOTOR_MIN_SPEED_VALUE, MOTOR_MAX_SPEED_VALUE, 0, 255) : 0);
+  }
+  
+  if (motors & MOTOR_BACK) {
+    pwm = (thrust + MOTOR_BACK_THRUST_A) / MOTOR_BACK_THRUST_B;
+    setMotorRaw(MOTOR_BACK, pwm);
+    motorSpeeds[MOTOR_BACK_I] = (pwm >= MOTOR_MIN_SPEED_VALUE ? map(pwm, MOTOR_MIN_SPEED_VALUE, MOTOR_MAX_SPEED_VALUE, 0, 255) : 0);
+  }
+  
+  if (motors & MOTOR_LEFT) {
+    pwm = (thrust + MOTOR_LEFT_THRUST_A) / MOTOR_LEFT_THRUST_B;
+    setMotorRaw(MOTOR_LEFT, pwm);
+    motorSpeeds[MOTOR_LEFT_I] = (pwm >= MOTOR_MIN_SPEED_VALUE ? map(pwm, MOTOR_MIN_SPEED_VALUE, MOTOR_MAX_SPEED_VALUE, 0, 255) : 0);
+  }
+  
+  if (motors & MOTOR_RIGHT) {
+    pwm = (thrust + MOTOR_RIGHT_THRUST_A) / MOTOR_RIGHT_THRUST_B;
+    setMotorRaw(MOTOR_RIGHT, pwm);
+    motorSpeeds[MOTOR_RIGHT_I] = (pwm >= MOTOR_MIN_SPEED_VALUE ? map(pwm, MOTOR_MIN_SPEED_VALUE, MOTOR_MAX_SPEED_VALUE, 0, 255) : 0);
+  }
+}
+
+uint16_t MotorController::getMotorThrust(byte motor) {
+  double thrust = 0;
+  if (motor == MOTOR_FRONT) {
+    thrust = motorRaw[MOTOR_FRONT_I] * MOTOR_FRONT_THRUST_B - MOTOR_FRONT_THRUST_A;
+  } else if (motor == MOTOR_BACK) {
+    thrust = motorRaw[MOTOR_BACK_I] * MOTOR_BACK_THRUST_B - MOTOR_BACK_THRUST_A;
+  } else if (motor == MOTOR_LEFT) {
+    thrust = motorRaw[MOTOR_LEFT_I] * MOTOR_LEFT_THRUST_B - MOTOR_LEFT_THRUST_A;
+  } else if (motor == MOTOR_RIGHT) {
+    thrust = motorRaw[MOTOR_RIGHT_I] * MOTOR_RIGHT_THRUST_B - MOTOR_RIGHT_THRUST_A;
+  }
+  
+  return (uint16_t)thrust;
 }
 
 #ifdef MOTOR_PROGRAMMING_ENABLED
